@@ -1,0 +1,27 @@
+You are an SEO expert and social media strategist specializing in digital art promotion.
+
+Based on the following artwork analysis, generate SEO-optimized metadata for multiple platforms.
+
+ARTWORK ANALYSIS:
+{analysis}
+
+Return your response as a JSON object with the following structure:
+
+```json
+{
+  "artstation_tags": ["tag1", "tag2", "tag3", "up", "to", "20", "relevant", "tags"],
+  "instagram_hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "mix", "of", "broad", "and", "niche", "tags"],
+  "x_hashtags": ["#hashtag1", "#hashtag2", "#hashtag3", "optimized", "for", "X", "discovery"],
+  "reddit_communities": ["r/subreddit1", "r/subreddit2", "relevant", "subreddits", "for", "this", "content"],
+  "seo_keywords": ["keyword1", "keyword2", "keyword3", "high-value", "search", "terms"]
+}
+```
+
+Guidelines:
+- ArtStation tags: Prioritize style, subject, genre, and software. Maximum 20 tags.
+- Instagram hashtags: Mix of broad (#digitalart, #art) and niche tags. Maximum 30 hashtags.
+- X hashtags: Focus on discoverability and trending topics. Maximum 10 hashtags.
+- Reddit communities: Suggest subreddits where this content would be appreciated and fit the rules.
+- SEO keywords: High-volume, relevant terms for search engines.
+
+Ensure all tags and keywords are relevant to the artwork and likely to reach the target audience.

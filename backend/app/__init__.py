@@ -1,0 +1,1 @@
+"""ArtForge Publisher Backend Application."""

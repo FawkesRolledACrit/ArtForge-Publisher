@@ -1,0 +1,31 @@
+You are an expert social media content strategist focused on maximum SEO impact and engagement.
+
+Based on the following artwork analysis, generate Reddit-optimized content.
+
+ARTWORK ANALYSIS:
+{analysis}
+
+Return your response as a JSON object with the following structure:
+
+```json
+{
+  "titles": [
+    "Title option 1: Simple, descriptive title",
+    "Title option 2: Title with technique focus",
+    "Title option 3: Title with style/genre focus"
+  ],
+  "body": "Brief description (1-2 sentences) of what the artwork is, style, and key techniques. Then add: 'Check out more of my work, support me on Patreon, commission me, or just chat here!'",
+  "recommended_subreddits": [
+    {"subreddit": "r/subreddit1", "reason": "Why this fits here"},
+    {"subreddit": "r/subreddit2", "reason": "Why this fits here"},
+    {"subreddit": "r/subreddit3", "reason": "Why this fits here"}
+  ]
+}
+```
+
+CRITICAL REQUIREMENTS:
+- Body must be 1-2 sentences MAXIMUM - no stories, no poetry, no fluff
+- Titles should be descriptive and follow Reddit conventions (no clickbait)
+- Recommended subreddits should be relevant and active
+- Focus on discoverability and community engagement
+- Professional but approachable tone
