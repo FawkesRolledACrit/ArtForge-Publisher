@@ -1416,7 +1416,7 @@ class ContentTab(QWidget):
         twitter_layout.addWidget(twitter_engagement)
         
         twitter_tab.setLayout(twitter_layout)
-        self.platform_tabs.addTab(twitter_tab, "X/Twitter")
+        self.platform_tabs.addTab(twitter_tab, "𝕏 Twitter")
         self.content_edits["X/Twitter"] = {
             "short": twitter_short,
             "medium": twitter_medium,
@@ -1438,7 +1438,7 @@ class ContentTab(QWidget):
         instagram_layout.addWidget(instagram_hashtags)
         
         instagram_tab.setLayout(instagram_layout)
-        self.platform_tabs.addTab(instagram_tab, "Instagram")
+        self.platform_tabs.addTab(instagram_tab, "📷 Instagram")
         self.content_edits["Instagram"] = {
             "caption": instagram_caption,
             "hashtags": instagram_hashtags
@@ -1459,7 +1459,7 @@ class ContentTab(QWidget):
         reddit_layout.addWidget(reddit_body)
         
         reddit_tab.setLayout(reddit_layout)
-        self.platform_tabs.addTab(reddit_tab, "Reddit")
+        self.platform_tabs.addTab(reddit_tab, "📱 Reddit")
         self.content_edits["Reddit"] = {
             "title": reddit_title,
             "body": reddit_body
@@ -1486,7 +1486,7 @@ class ContentTab(QWidget):
         artstation_layout.addWidget(artstation_tags)
         
         artstation_tab.setLayout(artstation_layout)
-        self.platform_tabs.addTab(artstation_tab, "ArtStation")
+        self.platform_tabs.addTab(artstation_tab, "🎨 ArtStation")
         self.content_edits["ArtStation"] = {
             "title": artstation_title,
             "description": artstation_description,
@@ -1514,7 +1514,7 @@ class ContentTab(QWidget):
         deviantart_layout.addWidget(deviantart_tags)
         
         deviantart_tab.setLayout(deviantart_layout)
-        self.platform_tabs.addTab(deviantart_tab, "DeviantArt")
+        self.platform_tabs.addTab(deviantart_tab, "🖌️ DeviantArt")
         self.content_edits["DeviantArt"] = {
             "title": deviantart_title,
             "description": deviantart_description,
