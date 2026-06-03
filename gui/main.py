@@ -131,6 +131,7 @@ class ThemeManager:
                 color: {colors['text_primary']};
                 font-size: 13px;
                 font-family: {self.FONT_FAMILY};
+                transition: all 0.2s ease-in-out;
             }}
             QLineEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -149,6 +150,7 @@ class ThemeManager:
                 color: {colors['text_primary']};
                 font-size: 13px;
                 font-family: {self.FONT_FAMILY};
+                transition: all 0.2s ease-in-out;
             }}
             QTextEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -189,6 +191,7 @@ class ThemeManager:
                 margin-bottom: 4px;
                 color: {colors['text_primary']};
                 font-family: {self.FONT_FAMILY};
+                transition: background-color 0.2s ease-in-out;
             }}
             QListWidget::item:hover {{
                 background-color: {colors['primary']};
@@ -216,6 +219,7 @@ class ThemeManager:
                 font-weight: 500;
                 color: {colors['text_primary']};
                 font-family: {self.FONT_FAMILY};
+                transition: all 0.2s ease-in-out;
             }}
             QTabBar::tab:hover {{
                 background-color: {colors['primary']};
@@ -240,6 +244,10 @@ class ThemeManager:
             }}
             QPushButton {{
                 font-family: {self.FONT_FAMILY};
+                transition: all 0.2s ease-in-out;
+            }}
+            QPushButton:hover {{
+                transition: all 0.2s ease-in-out;
             }}
         """
 
