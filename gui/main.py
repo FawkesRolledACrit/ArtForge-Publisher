@@ -553,8 +553,8 @@ class ImageUploadTab(QWidget):
         self.drop_zone.setStyleSheet("""
             QFrame {
                 border: 2px dashed #ccc;
-                border-radius: 10px;
-                background-color: #f9f9f9;
+                border-radius: 12px;
+                background-color: #f8f9fa;
             }
             QLabel {
                 color: #666;
@@ -577,9 +577,10 @@ class ImageUploadTab(QWidget):
                 background-color: #4CAF50;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -593,23 +594,46 @@ class ImageUploadTab(QWidget):
         
         # Image list
         list_group = QGroupBox("Uploaded Images")
+        list_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+        """)
         list_layout = QVBoxLayout()
         self.image_list = QListWidget()
         self.image_list.itemClicked.connect(self.on_image_selected)
         self.image_list.setStyleSheet("""
             QListWidget {
-                border: 1px solid #ddd;
-                border-radius: 5px;
-                padding: 5px;
-                background-color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 8px;
+                background-color: #f8f9fa;
             }
             QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #eee;
+                padding: 12px;
+                border-radius: 6px;
+                border: none;
+                background-color: white;
+                margin-bottom: 4px;
+            }
+            QListWidget::item:hover {
+                background-color: #e3f2fd;
             }
             QListWidget::item:selected {
-                background-color: #e3f2fd;
-                color: #1976d2;
+                background-color: #2196F3;
+                color: white;
             }
         """)
         list_layout.addWidget(self.image_list)
@@ -623,9 +647,10 @@ class ImageUploadTab(QWidget):
                 background-color: #f44336;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #da190b;
@@ -829,6 +854,23 @@ class AnalysisTab(QWidget):
         
         # Analysis form
         form_group = QGroupBox("Analysis Details")
+        form_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+        """)
         form_layout = QFormLayout()
         
         self.title_edit = QLineEdit()
@@ -862,24 +904,35 @@ class AnalysisTab(QWidget):
         for widget in [self.title_edit, self.art_style_edit, self.mood_edit, self.genre_edit]:
             widget.setStyleSheet("""
                 QLineEdit {
-                    padding: 8px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    background-color: #f5f5f5;
+                    padding: 10px 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    background-color: #f8f9fa;
+                    font-size: 13px;
+                }
+                QLineEdit:focus {
+                    border: 2px solid #2196F3;
+                    background-color: white;
                 }
                 QLineEdit[readOnly="true"] {
-                    background-color: #e8e8e8;
+                    background-color: #f0f0f0;
                     color: #666;
+                    border: 1px solid #e0e0e0;
                 }
             """)
         
         for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
             widget.text_edit.setStyleSheet("""
                 QTextEdit {
-                    padding: 8px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
-                    background-color: #f5f5f5;
+                    padding: 10px 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    background-color: #f8f9fa;
+                    font-size: 13px;
+                }
+                QTextEdit:focus {
+                    border: 2px solid #2196F3;
+                    background-color: white;
                 }
             """)
         
@@ -903,9 +956,10 @@ class AnalysisTab(QWidget):
                 background-color: #FF9800;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #e68900;
@@ -923,9 +977,10 @@ class AnalysisTab(QWidget):
                 background-color: #2196F3;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #0b7dda;
@@ -941,9 +996,10 @@ class AnalysisTab(QWidget):
                 background-color: #4CAF50;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #45a049;
@@ -1310,21 +1366,29 @@ class ContentTab(QWidget):
         self.platform_tabs = QTabWidget()
         self.platform_tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #ddd;
-                border-radius: 5px;
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
                 background-color: white;
+                padding: 8px;
             }
             QTabBar::tab {
-                background-color: #f0f0f0;
-                padding: 8px 16px;
-                border: 1px solid #ddd;
+                background-color: #f8f9fa;
+                padding: 10px 20px;
+                border: 1px solid #e0e0e0;
                 border-bottom: none;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 4px;
+                font-size: 13px;
+                font-weight: 500;
+            }
+            QTabBar::tab:hover {
+                background-color: #e3f2fd;
             }
             QTabBar::tab:selected {
                 background-color: white;
-                border-bottom: 1px solid white;
+                border-bottom: 2px solid #2196F3;
+                color: #2196F3;
             }
         """)
         
@@ -1463,10 +1527,14 @@ class ContentTab(QWidget):
                 field_edit.text_edit.setStyleSheet("""
                     QTextEdit {
                         padding: 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        background-color: #f5f5f5;
-                        font-size: 11px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 8px;
+                        background-color: #f8f9fa;
+                        font-size: 13px;
+                    }
+                    QTextEdit:focus {
+                        border: 2px solid #2196F3;
+                        background-color: white;
                     }
                 """)
         
@@ -1480,9 +1548,10 @@ class ContentTab(QWidget):
                 background-color: #FF9800;
                 color: white;
                 border: none;
-                padding: 10px;
-                font-size: 12px;
-                border-radius: 5px;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #e68900;
@@ -1500,10 +1569,10 @@ class ContentTab(QWidget):
                 background-color: #9C27B0;
                 color: white;
                 border: none;
-                padding: 12px;
-                font-size: 13px;
+                padding: 14px;
+                font-size: 14px;
                 font-weight: bold;
-                border-radius: 5px;
+                border-radius: 8px;
             }
             QPushButton:hover {
                 background-color: #7b1fa2;
