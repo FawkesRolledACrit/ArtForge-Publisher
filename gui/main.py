@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
-    QProgressBar, QGroupBox, QFrame, QScrollArea
+    QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication
@@ -407,6 +407,60 @@ class ProgressOverlay(QWidget):
                 break
 
 
+class CollapsibleGroupBox(QGroupBox):
+    """QGroupBox with collapsible functionality."""
+    
+    def __init__(self, title, parent=None):
+        super().__init__(title, parent)
+        self.setCheckable(True)
+        self.setChecked(True)
+        self.toggled.connect(self.on_toggled)
+        # Style the checkbox to look like a collapse button
+        self.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+    
+    def on_toggled(self, checked):
+        """Handle collapse/expand toggle."""
+        # Find the content layout and toggle visibility
+        for child in self.children():
+            if isinstance(child, QFormLayout) or isinstance(child, QVBoxLayout) or isinstance(child, QHBoxLayout):
+                for i in range(child.count()):
+                    item = child.itemAt(i)
+                    if item and item.widget():
+                        item.widget().setVisible(checked)
+
+
 class APIWorker(QThread):
     """Worker thread for API calls."""
     
@@ -593,7 +647,7 @@ class ImageUploadTab(QWidget):
         layout.addWidget(self.upload_btn)
         
         # Image list
-        list_group = QGroupBox("Uploaded Images")
+        list_group = CollapsibleGroupBox("Uploaded Images")
         list_group.setStyleSheet("""
             QGroupBox {
                 border: 1px solid #e0e0e0;
@@ -609,6 +663,22 @@ class ImageUploadTab(QWidget):
                 subcontrol-origin: margin;
                 left: 15px;
                 padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
             }
         """)
         list_layout = QVBoxLayout()
@@ -853,7 +923,7 @@ class AnalysisTab(QWidget):
         layout.addWidget(self.progress_bar)
         
         # Analysis form
-        form_group = QGroupBox("Analysis Details")
+        form_group = CollapsibleGroupBox("Analysis Details")
         form_group.setStyleSheet("""
             QGroupBox {
                 border: 1px solid #e0e0e0;
@@ -869,6 +939,22 @@ class AnalysisTab(QWidget):
                 subcontrol-origin: margin;
                 left: 15px;
                 padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
             }
         """)
         form_layout = QFormLayout()
