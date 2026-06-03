@@ -1195,6 +1195,16 @@ class AnalysisTab(QWidget):
     
     def clear_form(self):
         """Clear all form fields."""
+        # Check if user has unsaved changes
+        if not self.title_edit.isReadOnly():
+            reply = QMessageBox.question(
+                self, 'Confirm Clear',
+                'You have unsaved changes. Are you sure you want to clear the form?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        
         self.title_edit.clear()
         self.subject_edit.clear()
         self.character_edit.clear()
@@ -1660,6 +1670,18 @@ class ContentTab(QWidget):
     
     def clear_form(self):
         """Clear all content fields."""
+        # Check if user has unsaved changes
+        first_platform = list(self.content_edits.values())[0]
+        first_field = list(first_platform.values())[0]
+        if not first_field.isReadOnly():
+            reply = QMessageBox.question(
+                self, 'Confirm Clear',
+                'You have unsaved changes. Are you sure you want to clear the form?',
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        
         for platform, fields in self.content_edits.items():
             for field_name, field_edit in fields.items():
                 field_edit.clear()
