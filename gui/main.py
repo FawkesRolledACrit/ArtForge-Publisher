@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
-    QProgressBar, QGroupBox, QFrame
+    QProgressBar, QGroupBox, QFrame, QScrollArea
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication
@@ -517,7 +517,21 @@ class ImageUploadTab(QWidget):
     
     def init_ui(self):
         """Initialize the UI."""
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Content widget
+        content_widget = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         
         # Title
         title = QLabel("Image Management")
@@ -625,7 +639,10 @@ class ImageUploadTab(QWidget):
         layout.addWidget(self.delete_btn)
         
         layout.addStretch()
-        self.setLayout(layout)
+        content_widget.setLayout(layout)
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
+        self.setLayout(main_layout)
     
     def load_images(self):
         """Load images from the backend."""
@@ -774,7 +791,21 @@ class AnalysisTab(QWidget):
     
     def init_ui(self):
         """Initialize the UI."""
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Content widget
+        content_widget = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         
         # Title
         title = QLabel("Image Analysis")
@@ -930,7 +961,10 @@ class AnalysisTab(QWidget):
         layout.addLayout(button_layout)
         
         layout.addStretch()
-        self.setLayout(layout)
+        content_widget.setLayout(layout)
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
+        self.setLayout(main_layout)
     
     def set_image(self, image_id):
         """Set the current image."""
@@ -1236,7 +1270,21 @@ class ContentTab(QWidget):
     
     def init_ui(self):
         """Initialize the UI."""
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        
+        # Content widget
+        content_widget = QWidget()
         layout = QVBoxLayout()
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(10)
         
         # Title
         title = QLabel("Content Generation")
@@ -1409,7 +1457,7 @@ class ContentTab(QWidget):
             "tags": deviantart_tags
         }
         
-        # Apply consistent styling to all fields
+        # Apply consistent styling to all content fields
         for platform, fields in self.content_edits.items():
             for field_name, field_edit in fields.items():
                 field_edit.text_edit.setStyleSheet("""
@@ -1472,7 +1520,10 @@ class ContentTab(QWidget):
         layout.addLayout(button_layout)
         
         layout.addStretch()
-        self.setLayout(layout)
+        content_widget.setLayout(layout)
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
+        self.setLayout(main_layout)
     
     def set_image(self, image_id):
         """Set the current image."""
