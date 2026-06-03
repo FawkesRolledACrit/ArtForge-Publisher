@@ -12,15 +12,40 @@ from PyQt6.QtWidgets import (
     QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication
+from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase
 
 
 class ThemeManager:
     """Manages application themes and color schemes."""
     
     # Font families (platform-specific)
-    FONT_FAMILY = "Segoe UI, Roboto, Helvetica, Arial, sans-serif"
-    FONT_FAMILY_MONOSPACE = "Consolas, Monaco, Courier New, monospace"
+    FONT_FAMILY = "RetroByte, 'Chakra Petch', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    FONT_FAMILY_MONOSPACE = "RetroByte, Consolas, Monaco, Courier New, monospace"
+    
+    # Retro Y2K Theme (based on user's website)
+    RETRO_THEME = {
+        "background": "#000000",
+        "surface": "#0a0a0a",
+        "border": "#00FF00",
+        "text_primary": "#00FF00",
+        "text_secondary": "#00CC00",
+        "primary": "#00FFFF",
+        "primary_hover": "#00DDDD",
+        "success": "#00FF00",
+        "success_hover": "#00CC00",
+        "warning": "#FFFF00",
+        "warning_hover": "#DDDD00",
+        "danger": "#FF00FF",
+        "danger_hover": "#DD00DD",
+        "purple": "#FF00FF",
+        "purple_hover": "#DD00DD",
+        "input_bg": "#111111",
+        "input_border": "#00FF00",
+        "input_focus": "#00FFFF",
+        "card_bg": "#0a0a0a",
+        "card_border": "#FF00FF",
+        "scroll_bg": "#050505",
+    }
     
     LIGHT_THEME = {
         "background": "#ffffff",
@@ -47,9 +72,9 @@ class ThemeManager:
     }
     
     DARK_THEME = {
-        "background": "#1e1e1e",
-        "surface": "#2d2d2d",
-        "border": "#404040",
+        "background": "#0a0a0a",
+        "surface": "#151515",
+        "border": "#333333",
         "text_primary": "#e0e0e0",
         "text_secondary": "#b0b0b0",
         "primary": "#64B5F6",
@@ -62,18 +87,34 @@ class ThemeManager:
         "danger_hover": "#EF5350",
         "purple": "#BA68C8",
         "purple_hover": "#AB47BC",
-        "input_bg": "#2d2d2d",
+        "input_bg": "#1a1a1a",
         "input_border": "#404040",
         "input_focus": "#64B5F6",
-        "card_bg": "#2d2d2d",
-        "card_border": "#404040",
-        "scroll_bg": "#2d2d2d",
+        "card_bg": "#151515",
+        "card_border": "#333333",
+        "scroll_bg": "#0a0a0a",
     }
     
     def __init__(self):
-        self.current_theme = "light"
+        self.current_theme = "retro"  # Default to retro theme
         self.config_path = Path.home() / ".artforge_publisher" / "config.json"
         self.load_theme()
+        self.load_custom_font()
+    
+    def load_custom_font(self):
+        """Load the custom RetroByte font."""
+        font_path = Path("C:/Users/Fawke/Downloads/Fonts/RetroByte.ttf")
+        if font_path.exists():
+            try:
+                font_id = QFontDatabase.addApplicationFont(str(font_path))
+                if font_id >= 0:
+                    print(f"Successfully loaded RetroByte font from {font_path}")
+                else:
+                    print(f"Failed to load RetroByte font from {font_path}")
+            except Exception as e:
+                print(f"Error loading RetroByte font: {e}")
+        else:
+            print(f"RetroByte font not found at {font_path}")
     
     def load_theme(self):
         """Load theme preference from config file."""
@@ -81,9 +122,9 @@ class ThemeManager:
             if self.config_path.exists():
                 with open(self.config_path, 'r') as f:
                     config = json.load(f)
-                    self.current_theme = config.get("theme", "light")
+                    self.current_theme = config.get("theme", "retro")
         except Exception:
-            self.current_theme = "light"
+            self.current_theme = "retro"
     
     def save_theme(self):
         """Save theme preference to config file."""
@@ -97,18 +138,30 @@ class ThemeManager:
     
     def get_color(self, color_name):
         """Get color from current theme."""
-        theme = self.LIGHT_THEME if self.current_theme == "light" else self.DARK_THEME
+        if self.current_theme == "retro":
+            theme = self.RETRO_THEME
+        elif self.current_theme == "dark":
+            theme = self.DARK_THEME
+        else:
+            theme = self.LIGHT_THEME
         return theme.get(color_name, "#000000")
     
     def toggle_theme(self):
-        """Toggle between light and dark theme."""
-        self.current_theme = "dark" if self.current_theme == "light" else "light"
+        """Toggle between light, dark, and retro theme."""
+        themes = ["light", "dark", "retro"]
+        current_index = themes.index(self.current_theme) if self.current_theme in themes else 0
+        self.current_theme = themes[(current_index + 1) % len(themes)]
         self.save_theme()
         return self.current_theme
     
     def get_stylesheet(self):
         """Get stylesheet for current theme."""
-        colors = self.LIGHT_THEME if self.current_theme == "light" else self.DARK_THEME
+        if self.current_theme == "retro":
+            colors = self.RETRO_THEME
+        elif self.current_theme == "dark":
+            colors = self.DARK_THEME
+        else:
+            colors = self.LIGHT_THEME
         return f"""
             QMainWindow {{
                 background-color: {colors['background']};
@@ -2257,7 +2310,8 @@ class MainWindow(QMainWindow):
         header_layout.addStretch()
         
         # Theme toggle button
-        self.theme_btn = QPushButton("🌙" if theme_manager.current_theme == "light" else "☀️")
+        theme_icon = "🕹️" if theme_manager.current_theme == "retro" else ("🌙" if theme_manager.current_theme == "light" else "☀️")
+        self.theme_btn = QPushButton(theme_icon)
         self.theme_btn.setFixedSize(40, 40)
         self.theme_btn.setStyleSheet(f"""
             QPushButton {{
@@ -2301,9 +2355,10 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(main_widget)
     
     def toggle_theme(self):
-        """Toggle between light and dark theme."""
+        """Toggle between light, dark, and retro theme."""
         new_theme = theme_manager.toggle_theme()
-        self.theme_btn.setText("🌙" if new_theme == "light" else "☀️")
+        theme_icon = "🕹️" if new_theme == "retro" else ("🌙" if new_theme == "light" else "☀️")
+        self.theme_btn.setText(theme_icon)
         self.setStyleSheet(theme_manager.get_stylesheet())
         
         # Update header styling
