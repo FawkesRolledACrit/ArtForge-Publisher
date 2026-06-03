@@ -33,16 +33,16 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Toast notifications for success/error messages
 - [x] Progress overlay for long-running operations
 - [x] Confirmation dialogs for destructive actions
-- [ ] Custom styled widgets (buttons, inputs, cards)
-- [ ] Consistent spacing and padding throughout UI
+- [x] Custom styled widgets (buttons, inputs, cards)
+- [x] Consistent spacing and padding throughout UI
 
 ### 📋 Medium Priority UI Tasks
-- [ ] Modern card-based layout with shadows and rounded corners
-- [ ] Platform-specific icons for each content card
-- [ ] Collapsible sections for better space management
-- [ ] Professional color scheme with dark/light mode support
-- [ ] Custom fonts (Inter, Roboto, or similar)
-- [ ] Smooth animations and transitions
+- [x] Modern card-based layout with shadows and rounded corners
+- [x] Platform-specific icons for each content card
+- [x] Collapsible sections for better space management
+- [x] Professional color scheme with dark/light mode support
+- [x] Custom fonts (Inter, Roboto, or similar)
+- [x] Smooth animations and transitions
 - [ ] Loading spinners and skeleton screens
 - [ ] Status bar with connection status and last action
 - [ ] Toolbar with quick action buttons
