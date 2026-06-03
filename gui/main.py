@@ -18,6 +18,10 @@ from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplicatio
 class ThemeManager:
     """Manages application themes and color schemes."""
     
+    # Font families (platform-specific)
+    FONT_FAMILY = "Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+    FONT_FAMILY_MONOSPACE = "Consolas, Monaco, Courier New, monospace"
+    
     LIGHT_THEME = {
         "background": "#ffffff",
         "surface": "#f8f9fa",
@@ -108,13 +112,16 @@ class ThemeManager:
         return f"""
             QMainWindow {{
                 background-color: {colors['background']};
+                font-family: {self.FONT_FAMILY};
             }}
             QWidget {{
                 background-color: {colors['background']};
                 color: {colors['text_primary']};
+                font-family: {self.FONT_FAMILY};
             }}
             QLabel {{
                 color: {colors['text_primary']};
+                font-family: {self.FONT_FAMILY};
             }}
             QLineEdit {{
                 background-color: {colors['input_bg']};
@@ -123,6 +130,7 @@ class ThemeManager:
                 padding: 10px 12px;
                 color: {colors['text_primary']};
                 font-size: 13px;
+                font-family: {self.FONT_FAMILY};
             }}
             QLineEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -140,6 +148,7 @@ class ThemeManager:
                 padding: 10px 12px;
                 color: {colors['text_primary']};
                 font-size: 13px;
+                font-family: {self.FONT_FAMILY};
             }}
             QTextEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -154,6 +163,7 @@ class ThemeManager:
                 font-size: 13px;
                 color: {colors['text_primary']};
                 background-color: {colors['card_bg']};
+                font-family: {self.FONT_FAMILY};
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
@@ -169,6 +179,7 @@ class ThemeManager:
                 border-radius: 8px;
                 padding: 8px;
                 background-color: {colors['surface']};
+                font-family: {self.FONT_FAMILY};
             }}
             QListWidget::item {{
                 padding: 12px;
@@ -177,6 +188,7 @@ class ThemeManager:
                 background-color: {colors['card_bg']};
                 margin-bottom: 4px;
                 color: {colors['text_primary']};
+                font-family: {self.FONT_FAMILY};
             }}
             QListWidget::item:hover {{
                 background-color: {colors['primary']};
@@ -203,6 +215,7 @@ class ThemeManager:
                 font-size: 13px;
                 font-weight: 500;
                 color: {colors['text_primary']};
+                font-family: {self.FONT_FAMILY};
             }}
             QTabBar::tab:hover {{
                 background-color: {colors['primary']};
@@ -219,10 +232,14 @@ class ThemeManager:
                 background-color: {colors['surface']};
                 text-align: center;
                 color: {colors['text_primary']};
+                font-family: {self.FONT_FAMILY};
             }}
             QProgressBar::chunk {{
                 background-color: {colors['primary']};
                 border-radius: 3px;
+            }}
+            QPushButton {{
+                font-family: {self.FONT_FAMILY};
             }}
         """
 
@@ -2225,7 +2242,7 @@ class MainWindow(QMainWindow):
         header_layout.setContentsMargins(15, 10, 15, 10)
         
         title_label = QLabel("ArtForge Publisher")
-        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setFont(QFont(theme_manager.FONT_FAMILY, 16, QFont.Weight.Bold))
         title_label.setStyleSheet(f"color: {theme_manager.get_color('text_primary')};")
         header_layout.addWidget(title_label)
         
