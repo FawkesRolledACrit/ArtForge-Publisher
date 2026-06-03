@@ -346,6 +346,67 @@ class ToastNotification(QWidget):
         self.opacity_animation.start()
 
 
+class ProgressOverlay(QWidget):
+    """Progress overlay widget for long-running operations."""
+    
+    def __init__(self, message="Loading...", parent=None):
+        super().__init__(parent)
+        self.message = message
+        self.init_ui()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Background container
+        container = QFrame()
+        container.setStyleSheet("""
+            QFrame {
+                background-color: rgba(0, 0, 0, 150);
+                border-radius: 10px;
+            }
+        """)
+        container_layout = QVBoxLayout()
+        container_layout.setContentsMargins(30, 30, 30, 30)
+        
+        # Spinner (using QLabel with emoji)
+        spinner = QLabel("⏳")
+        spinner.setStyleSheet("font-size: 48px;")
+        spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container_layout.addWidget(spinner)
+        
+        # Message
+        message_label = QLabel(self.message)
+        message_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+        message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container_layout.addWidget(message_label)
+        
+        container.setLayout(container_layout)
+        layout.addWidget(container)
+        self.setLayout(layout)
+    
+    def show_overlay(self, parent_widget):
+        """Show the overlay over the parent widget."""
+        if parent_widget:
+            self.setParent(parent_widget)
+            self.setGeometry(parent_widget.rect())
+        self.show()
+        self.raise_()
+    
+    def set_message(self, message):
+        """Update the progress message."""
+        self.message = message
+        # Find and update the message label
+        for child in self.findChildren(QLabel):
+            if child.text() != "⏳":
+                child.setText(message)
+                break
+
+
 class APIWorker(QThread):
     """Worker thread for API calls."""
     
@@ -400,6 +461,7 @@ class ImageUploadTab(QWidget):
         self.selected_image_id = None
         self.workers = []  # Track workers for cleanup
         self.setAcceptDrops(True)  # Enable drag-and-drop
+        self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
         self.load_images()
     
@@ -587,10 +649,13 @@ class ImageUploadTab(QWidget):
         if loading:
             self.progress_bar.setRange(0, 0)  # Indeterminate progress
             self.status_label.setText(message)
+            self.progress_overlay.set_message(message)
+            self.progress_overlay.show_overlay(self)
         else:
             self.progress_bar.setRange(0, 1)
             self.progress_bar.setValue(1)
             self.status_label.setText("Ready")
+            self.progress_overlay.hide()
     
     def on_images_loaded(self, data):
         """Handle loaded images."""
@@ -704,6 +769,7 @@ class AnalysisTab(QWidget):
         self.main_window = main_window
         self.current_image_id = None
         self.workers = []  # Track workers for cleanup
+        self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
     
     def init_ui(self):
@@ -922,10 +988,13 @@ class AnalysisTab(QWidget):
         if loading:
             self.progress_bar.setRange(0, 0)  # Indeterminate progress
             self.status_label.setText(message)
+            self.progress_overlay.set_message(message)
+            self.progress_overlay.show_overlay(self)
         else:
             self.progress_bar.setRange(0, 1)
             self.progress_bar.setValue(1)
             self.status_label.setText("Ready")
+            self.progress_overlay.hide()
     
     def on_analysis_loaded(self, data):
         """Handle loaded analysis."""
@@ -1152,6 +1221,7 @@ class ContentTab(QWidget):
         self.current_image_id = None
         self.content_edits = {}  # Store text edits for each platform
         self.workers = []  # Track workers for cleanup
+        self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
     
     def init_ui(self):
@@ -1442,10 +1512,13 @@ class ContentTab(QWidget):
         if loading:
             self.progress_bar.setRange(0, 0)  # Indeterminate progress
             self.status_label.setText(message)
+            self.progress_overlay.set_message(message)
+            self.progress_overlay.show_overlay(self)
         else:
             self.progress_bar.setRange(0, 1)
             self.progress_bar.setValue(1)
             self.status_label.setText("Ready")
+            self.progress_overlay.hide()
     
     def on_content_loaded(self, data):
         """Handle loaded content."""

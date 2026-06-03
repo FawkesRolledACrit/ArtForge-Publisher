@@ -31,7 +31,7 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Copy-to-clipboard buttons for each content field
 - [x] Drag-and-drop image upload with visual feedback
 - [x] Toast notifications for success/error messages
-- [ ] Progress overlay for long-running operations
+- [x] Progress overlay for long-running operations
 - [ ] Confirmation dialogs for destructive actions
 - [ ] Custom styled widgets (buttons, inputs, cards)
 - [ ] Consistent spacing and padding throughout UI
