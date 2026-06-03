@@ -2,6 +2,9 @@
 
 import sys
 import requests
+import json
+import os
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
@@ -10,6 +13,222 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication
+
+
+class ThemeManager:
+    """Manages application themes and color schemes."""
+    
+    LIGHT_THEME = {
+        "background": "#ffffff",
+        "surface": "#f8f9fa",
+        "border": "#e0e0e0",
+        "text_primary": "#333333",
+        "text_secondary": "#666666",
+        "primary": "#2196F3",
+        "primary_hover": "#0b7dda",
+        "success": "#4CAF50",
+        "success_hover": "#45a049",
+        "warning": "#FF9800",
+        "warning_hover": "#e68900",
+        "danger": "#f44336",
+        "danger_hover": "#da190b",
+        "purple": "#9C27B0",
+        "purple_hover": "#7b1fa2",
+        "input_bg": "#f8f9fa",
+        "input_border": "#e0e0e0",
+        "input_focus": "#2196F3",
+        "card_bg": "#ffffff",
+        "card_border": "#e0e0e0",
+        "scroll_bg": "#f8f9fa",
+    }
+    
+    DARK_THEME = {
+        "background": "#1e1e1e",
+        "surface": "#2d2d2d",
+        "border": "#404040",
+        "text_primary": "#e0e0e0",
+        "text_secondary": "#b0b0b0",
+        "primary": "#64B5F6",
+        "primary_hover": "#42A5F5",
+        "success": "#81C784",
+        "success_hover": "#66BB6A",
+        "warning": "#FFB74D",
+        "warning_hover": "#FFA726",
+        "danger": "#E57373",
+        "danger_hover": "#EF5350",
+        "purple": "#BA68C8",
+        "purple_hover": "#AB47BC",
+        "input_bg": "#2d2d2d",
+        "input_border": "#404040",
+        "input_focus": "#64B5F6",
+        "card_bg": "#2d2d2d",
+        "card_border": "#404040",
+        "scroll_bg": "#2d2d2d",
+    }
+    
+    def __init__(self):
+        self.current_theme = "light"
+        self.config_path = Path.home() / ".artforge_publisher" / "config.json"
+        self.load_theme()
+    
+    def load_theme(self):
+        """Load theme preference from config file."""
+        try:
+            if self.config_path.exists():
+                with open(self.config_path, 'r') as f:
+                    config = json.load(f)
+                    self.current_theme = config.get("theme", "light")
+        except Exception:
+            self.current_theme = "light"
+    
+    def save_theme(self):
+        """Save theme preference to config file."""
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            config = {"theme": self.current_theme}
+            with open(self.config_path, 'w') as f:
+                json.dump(config, f)
+        except Exception:
+            pass
+    
+    def get_color(self, color_name):
+        """Get color from current theme."""
+        theme = self.LIGHT_THEME if self.current_theme == "light" else self.DARK_THEME
+        return theme.get(color_name, "#000000")
+    
+    def toggle_theme(self):
+        """Toggle between light and dark theme."""
+        self.current_theme = "dark" if self.current_theme == "light" else "light"
+        self.save_theme()
+        return self.current_theme
+    
+    def get_stylesheet(self):
+        """Get stylesheet for current theme."""
+        colors = self.LIGHT_THEME if self.current_theme == "light" else self.DARK_THEME
+        return f"""
+            QMainWindow {{
+                background-color: {colors['background']};
+            }}
+            QWidget {{
+                background-color: {colors['background']};
+                color: {colors['text_primary']};
+            }}
+            QLabel {{
+                color: {colors['text_primary']};
+            }}
+            QLineEdit {{
+                background-color: {colors['input_bg']};
+                border: 1px solid {colors['input_border']};
+                border-radius: 8px;
+                padding: 10px 12px;
+                color: {colors['text_primary']};
+                font-size: 13px;
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {colors['input_focus']};
+                background-color: {colors['background']};
+            }}
+            QLineEdit[readOnly="true"] {{
+                background-color: {colors['surface']};
+                color: {colors['text_secondary']};
+                border: 1px solid {colors['border']};
+            }}
+            QTextEdit {{
+                background-color: {colors['input_bg']};
+                border: 1px solid {colors['input_border']};
+                border-radius: 8px;
+                padding: 10px 12px;
+                color: {colors['text_primary']};
+                font-size: 13px;
+            }}
+            QTextEdit:focus {{
+                border: 2px solid {colors['input_focus']};
+                background-color: {colors['background']};
+            }}
+            QGroupBox {{
+                border: 1px solid {colors['card_border']};
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: {colors['text_primary']};
+                background-color: {colors['card_bg']};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }}
+            QScrollArea {{
+                background-color: {colors['scroll_bg']};
+                border: none;
+            }}
+            QListWidget {{
+                border: none;
+                border-radius: 8px;
+                padding: 8px;
+                background-color: {colors['surface']};
+            }}
+            QListWidget::item {{
+                padding: 12px;
+                border-radius: 6px;
+                border: none;
+                background-color: {colors['card_bg']};
+                margin-bottom: 4px;
+                color: {colors['text_primary']};
+            }}
+            QListWidget::item:hover {{
+                background-color: {colors['primary']};
+                color: white;
+            }}
+            QListWidget::item:selected {{
+                background-color: {colors['primary']};
+                color: white;
+            }}
+            QTabWidget::pane {{
+                border: 1px solid {colors['card_border']};
+                border-radius: 12px;
+                background-color: {colors['card_bg']};
+                padding: 8px;
+            }}
+            QTabBar::tab {{
+                background-color: {colors['surface']};
+                padding: 10px 20px;
+                border: 1px solid {colors['card_border']};
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 4px;
+                font-size: 13px;
+                font-weight: 500;
+                color: {colors['text_primary']};
+            }}
+            QTabBar::tab:hover {{
+                background-color: {colors['primary']};
+                color: white;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {colors['card_bg']};
+                border-bottom: 2px solid {colors['primary']};
+                color: {colors['primary']};
+            }}
+            QProgressBar {{
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                background-color: {colors['surface']};
+                text-align: center;
+                color: {colors['text_primary']};
+            }}
+            QProgressBar::chunk {{
+                background-color: {colors['primary']};
+                border-radius: 3px;
+            }}
+        """
+
+
+# Global theme manager instance
+theme_manager = ThemeManager()
 
 
 class TextEditWithCounter(QWidget):
@@ -1985,6 +2204,54 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("ArtForge Publisher")
         self.setGeometry(100, 100, 1200, 800)
         
+        # Apply theme stylesheet
+        self.setStyleSheet(theme_manager.get_stylesheet())
+        
+        # Create main widget and layout
+        main_widget = QWidget()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Create header with theme toggle
+        header = QWidget()
+        header.setStyleSheet(f"""
+            QWidget {{
+                background-color: {theme_manager.get_color('surface')};
+                border-bottom: 1px solid {theme_manager.get_color('border')};
+                padding: 8px;
+            }}
+        """)
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(15, 10, 15, 10)
+        
+        title_label = QLabel("ArtForge Publisher")
+        title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
+        title_label.setStyleSheet(f"color: {theme_manager.get_color('text_primary')};")
+        header_layout.addWidget(title_label)
+        
+        header_layout.addStretch()
+        
+        # Theme toggle button
+        self.theme_btn = QPushButton("🌙" if theme_manager.current_theme == "light" else "☀️")
+        self.theme_btn.setFixedSize(40, 40)
+        self.theme_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {theme_manager.get_color('surface')};
+                border: 1px solid {theme_manager.get_color('border')};
+                border-radius: 8px;
+                font-size: 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme_manager.get_color('primary')};
+                color: white;
+            }}
+        """)
+        self.theme_btn.clicked.connect(self.toggle_theme)
+        header_layout.addWidget(self.theme_btn)
+        
+        header.setLayout(header_layout)
+        main_layout.addWidget(header)
+        
         # Create tab widget
         self.tabs = QTabWidget()
         
@@ -2004,7 +2271,45 @@ class MainWindow(QMainWindow):
         # Connect tab change to update current image
         self.tabs.currentChanged.connect(self.on_tab_changed)
         
-        self.setCentralWidget(self.tabs)
+        main_layout.addWidget(self.tabs)
+        main_widget.setLayout(main_layout)
+        self.setCentralWidget(main_widget)
+    
+    def toggle_theme(self):
+        """Toggle between light and dark theme."""
+        new_theme = theme_manager.toggle_theme()
+        self.theme_btn.setText("🌙" if new_theme == "light" else "☀️")
+        self.setStyleSheet(theme_manager.get_stylesheet())
+        
+        # Update header styling
+        header = self.findChild(QWidget)
+        if header:
+            header.setStyleSheet(f"""
+                QWidget {{
+                    background-color: {theme_manager.get_color('surface')};
+                    border-bottom: 1px solid {theme_manager.get_color('border')};
+                    padding: 8px;
+                }}
+            """)
+        
+        # Update title label color
+        title_label = self.findChild(QLabel)
+        if title_label:
+            title_label.setStyleSheet(f"color: {theme_manager.get_color('text_primary')}; font-weight: bold; font-size: 16px;")
+        
+        # Update theme button styling
+        self.theme_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {theme_manager.get_color('surface')};
+                border: 1px solid {theme_manager.get_color('border')};
+                border-radius: 8px;
+                font-size: 18px;
+            }}
+            QPushButton:hover {{
+                background-color: {theme_manager.get_color('primary')};
+                color: white;
+            }}
+        """)
     
     def on_image_selected(self, image_id):
         """Handle image selection - clear forms when new image is selected."""
