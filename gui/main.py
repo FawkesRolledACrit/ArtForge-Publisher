@@ -8,8 +8,342 @@ from PyQt6.QtWidgets import (
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
     QProgressBar, QGroupBox, QFrame
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal
-from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
+from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication
+
+
+class TextEditWithCounter(QWidget):
+    """QTextEdit with character counter label."""
+    
+    def __init__(self, max_chars=None, placeholder="", parent=None):
+        super().__init__(parent)
+        self.max_chars = max_chars
+        self.init_ui(placeholder)
+    
+    def init_ui(self, placeholder):
+        """Initialize the UI."""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        
+        # Text edit
+        self.text_edit = QTextEdit()
+        self.text_edit.setPlaceholderText(placeholder)
+        self.text_edit.textChanged.connect(self.update_counter)
+        layout.addWidget(self.text_edit)
+        
+        # Counter label
+        self.counter_label = QLabel("0 characters")
+        self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.counter_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(self.counter_label)
+        
+        self.setLayout(layout)
+    
+    def update_counter(self):
+        """Update the character counter."""
+        text = self.text_edit.toPlainText()
+        count = len(text)
+        
+        if self.max_chars:
+            remaining = self.max_chars - count
+            if remaining < 0:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters ({abs(remaining)} over limit!)")
+                self.counter_label.setStyleSheet("color: #f44336; font-size: 10px; font-weight: bold;")
+            elif remaining < 20:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters ({remaining} remaining)")
+                self.counter_label.setStyleSheet("color: #ff9800; font-size: 10px;")
+            else:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters")
+                self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        else:
+            self.counter_label.setText(f"{count} characters")
+    
+    def setPlainText(self, text):
+        """Set text and update counter."""
+        self.text_edit.setPlainText(text)
+        self.update_counter()
+    
+    def toPlainText(self):
+        """Get text from text edit."""
+        return self.text_edit.toPlainText()
+    
+    def clear(self):
+        """Clear text and update counter."""
+        self.text_edit.clear()
+        self.update_counter()
+    
+    def setReadOnly(self, readonly):
+        """Set read-only state."""
+        self.text_edit.setReadOnly(readonly)
+    
+    def isReadOnly(self):
+        """Check if read-only."""
+        return self.text_edit.isReadOnly()
+    
+    def setPlaceholderText(self, text):
+        """Set placeholder text."""
+        self.text_edit.setPlaceholderText(text)
+    
+    def setStyleSheet(self, style):
+        """Set style sheet for text edit."""
+        self.text_edit.setStyleSheet(style)
+    
+    def setMaximumHeight(self, height):
+        """Set maximum height for text edit."""
+        self.text_edit.setMaximumHeight(height)
+
+
+class TextEditWithCounterAndCopy(QWidget):
+    """QTextEdit with character counter and copy button."""
+    
+    def __init__(self, max_chars=None, placeholder="", parent=None):
+        super().__init__(parent)
+        self.max_chars = max_chars
+        self.init_ui(placeholder)
+    
+    def init_ui(self, placeholder):
+        """Initialize the UI."""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+        
+        # Header with label and copy button
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(5)
+        
+        # Text edit
+        self.text_edit = QTextEdit()
+        self.text_edit.setPlaceholderText(placeholder)
+        self.text_edit.textChanged.connect(self.update_counter)
+        layout.addWidget(self.text_edit)
+        
+        # Footer with counter and copy button
+        footer_layout = QHBoxLayout()
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setSpacing(5)
+        
+        # Counter label
+        self.counter_label = QLabel("0 characters")
+        self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        
+        # Copy button
+        self.copy_btn = QPushButton("📋 Copy")
+        self.copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                font-size: 10px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+        self.copy_btn.clicked.connect(self.copy_to_clipboard)
+        
+        footer_layout.addWidget(self.counter_label)
+        footer_layout.addStretch()
+        footer_layout.addWidget(self.copy_btn)
+        layout.addLayout(footer_layout)
+        
+        self.setLayout(layout)
+    
+    def update_counter(self):
+        """Update the character counter."""
+        text = self.text_edit.toPlainText()
+        count = len(text)
+        
+        if self.max_chars:
+            remaining = self.max_chars - count
+            if remaining < 0:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters ({abs(remaining)} over limit!)")
+                self.counter_label.setStyleSheet("color: #f44336; font-size: 10px; font-weight: bold;")
+            elif remaining < 20:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters ({remaining} remaining)")
+                self.counter_label.setStyleSheet("color: #ff9800; font-size: 10px;")
+            else:
+                self.counter_label.setText(f"{count}/{self.max_chars} characters")
+                self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        else:
+            self.counter_label.setText(f"{count} characters")
+    
+    def copy_to_clipboard(self):
+        """Copy text to clipboard."""
+        text = self.text_edit.toPlainText()
+        clipboard = QGuiApplication.clipboard()
+        clipboard.setText(text)
+        # Visual feedback
+        self.copy_btn.setText("✓ Copied!")
+        self.copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                font-size: 10px;
+                border-radius: 3px;
+            }
+        """)
+        # Reset button after 2 seconds
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(2000, self.reset_copy_button)
+    
+    def reset_copy_button(self):
+        """Reset copy button to original state."""
+        self.copy_btn.setText("📋 Copy")
+        self.copy_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                font-size: 10px;
+                border-radius: 3px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+    
+    def setPlainText(self, text):
+        """Set text and update counter."""
+        self.text_edit.setPlainText(text)
+        self.update_counter()
+    
+    def toPlainText(self):
+        """Get text from text edit."""
+        return self.text_edit.toPlainText()
+    
+    def clear(self):
+        """Clear text and update counter."""
+        self.text_edit.clear()
+        self.update_counter()
+    
+    def setReadOnly(self, readonly):
+        """Set read-only state."""
+        self.text_edit.setReadOnly(readonly)
+        self.copy_btn.setEnabled(not readonly)
+    
+    def isReadOnly(self):
+        """Check if read-only."""
+        return self.text_edit.isReadOnly()
+    
+    def setPlaceholderText(self, text):
+        """Set placeholder text."""
+        self.text_edit.setPlaceholderText(text)
+    
+    def setStyleSheet(self, style):
+        """Set style sheet for text edit."""
+        self.text_edit.setStyleSheet(style)
+    
+    def setMaximumHeight(self, height):
+        """Set maximum height for text edit."""
+        self.text_edit.setMaximumHeight(height)
+
+
+class ToastNotification(QWidget):
+    """Toast notification widget for success/error messages."""
+    
+    def __init__(self, message, message_type="success", parent=None):
+        super().__init__(parent)
+        self.message = message
+        self.message_type = message_type
+        self.init_ui()
+        self.animate_in()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Set style based on message type
+        if self.message_type == "success":
+            bg_color = "#4CAF50"
+            icon = "✓"
+        elif self.message_type == "error":
+            bg_color = "#f44336"
+            icon = "✕"
+        elif self.message_type == "warning":
+            bg_color = "#ff9800"
+            icon = "⚠"
+        else:
+            bg_color = "#2196F3"
+            icon = "ℹ"
+        
+        self.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color};
+                border-radius: 8px;
+                padding: 12px 16px;
+            }}
+            QLabel {{
+                color: white;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+        """)
+        
+        # Content layout
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(10)
+        
+        # Icon
+        icon_label = QLabel(icon)
+        icon_label.setStyleSheet("font-size: 18px;")
+        content_layout.addWidget(icon_label)
+        
+        # Message
+        message_label = QLabel(self.message)
+        message_label.setWordWrap(True)
+        content_layout.addWidget(message_label)
+        
+        layout.addLayout(content_layout)
+        self.setLayout(layout)
+        
+        # Set fixed size
+        self.setFixedWidth(350)
+        self.adjustSize()
+    
+    def animate_in(self):
+        """Animate the toast in from the top."""
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        
+        # Position at top-right of parent
+        if self.parent():
+            parent_rect = self.parent().geometry()
+            x = parent_rect.width() - self.width() - 20
+            y = 20
+            self.move(x, y)
+        
+        # Fade in animation
+        self.setWindowOpacity(0)
+        self.show()
+        
+        self.opacity_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.opacity_animation.setDuration(300)
+        self.opacity_animation.setStartValue(0)
+        self.opacity_animation.setEndValue(1)
+        self.opacity_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.opacity_animation.start()
+        
+        # Auto-dismiss after 3 seconds
+        QTimer.singleShot(3000, self.animate_out)
+    
+    def animate_out(self):
+        """Animate the toast out."""
+        self.opacity_animation = QPropertyAnimation(self, b"windowOpacity")
+        self.opacity_animation.setDuration(300)
+        self.opacity_animation.setStartValue(1)
+        self.opacity_animation.setEndValue(0)
+        self.opacity_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
+        self.opacity_animation.finished.connect(self.close)
+        self.opacity_animation.start()
 
 
 class APIWorker(QThread):
@@ -59,13 +393,65 @@ class ImageUploadTab(QWidget):
     
     image_selected = pyqtSignal(str)  # Signal emitted when image is selected
     
-    def __init__(self):
+    def __init__(self, main_window=None):
         super().__init__()
+        self.main_window = main_window
         self.images = {}  # Store image data
         self.selected_image_id = None
         self.workers = []  # Track workers for cleanup
+        self.setAcceptDrops(True)  # Enable drag-and-drop
         self.init_ui()
         self.load_images()
+    
+    def dragEnterEvent(self, event):
+        """Handle drag enter event."""
+        if event.mimeData().hasUrls():
+            event.accept()
+            self.drop_zone.setStyleSheet("""
+                QFrame {
+                    border: 3px dashed #4CAF50;
+                    border-radius: 10px;
+                    background-color: #e8f5e9;
+                }
+                QLabel {
+                    color: #2e7d32;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+            """)
+        else:
+            event.ignore()
+    
+    def dragLeaveEvent(self, event):
+        """Handle drag leave event."""
+        self.reset_drop_zone_style()
+    
+    def dropEvent(self, event):
+        """Handle drop event."""
+        self.reset_drop_zone_style()
+        if event.mimeData().hasUrls():
+            files = [u.toLocalFile() for u in event.mimeData().urls()]
+            image_files = [f for f in files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp', '.tiff'))]
+            if image_files:
+                for file_path in image_files:
+                    self.upload_image_file(file_path)
+            event.accept()
+        else:
+            event.ignore()
+    
+    def reset_drop_zone_style(self):
+        """Reset drop zone to default style."""
+        self.drop_zone.setStyleSheet("""
+            QFrame {
+                border: 2px dashed #ccc;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+            QLabel {
+                color: #666;
+                font-size: 14px;
+            }
+        """)
     
     def init_ui(self):
         """Initialize the UI."""
@@ -85,6 +471,28 @@ class ImageUploadTab(QWidget):
         self.progress_bar.setVisible(False)
         self.progress_bar.setMaximumHeight(20)
         layout.addWidget(self.progress_bar)
+        
+        # Drag-and-drop zone
+        self.drop_zone = QFrame()
+        self.drop_zone.setStyleSheet("""
+            QFrame {
+                border: 2px dashed #ccc;
+                border-radius: 10px;
+                background-color: #f9f9f9;
+            }
+            QLabel {
+                color: #666;
+                font-size: 14px;
+            }
+        """)
+        drop_zone_layout = QVBoxLayout()
+        drop_zone_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        drop_zone_label = QLabel("📁 Drag & Drop Images Here\nor click Upload below")
+        drop_zone_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        drop_zone_layout.addWidget(drop_zone_label)
+        self.drop_zone.setLayout(drop_zone_layout)
+        self.drop_zone.setMinimumHeight(100)
+        layout.addWidget(self.drop_zone)
         
         # Upload button
         self.upload_btn = QPushButton("📤 Upload Image")
@@ -201,26 +609,33 @@ class ImageUploadTab(QWidget):
             self, "Select Image", "", "Image Files (*.png *.jpg *.jpeg *.webp *.bmp *.tiff)"
         )
         if file_path:
-            self.set_loading(True, "Uploading image...")
-            # Read file and upload to backend
-            try:
-                with open(file_path, 'rb') as f:
-                    files = {'file': (file_path.split('/')[-1], f, 'image/png')}
-                    response = requests.post(
-                        "http://localhost:8000/api/v1/images/upload",
-                        files=files,
-                        timeout=30
-                    )
-                
-                self.set_loading(False)
-                if response.status_code == 201:
-                    QMessageBox.information(self, "Success", "Image uploaded successfully!")
-                    self.load_images()
-                else:
-                    QMessageBox.critical(self, "Error", f"Upload failed: {response.text}")
-            except Exception as e:
-                self.set_loading(False)
-                QMessageBox.critical(self, "Error", f"Upload error: {str(e)}")
+            self.upload_image_file(file_path)
+    
+    def upload_image_file(self, file_path):
+        """Upload an image from a given file path."""
+        self.set_loading(True, "Uploading image...")
+        # Read file and upload to backend
+        try:
+            with open(file_path, 'rb') as f:
+                files = {'file': (file_path.split('\\')[-1], f, 'image/png')}
+                response = requests.post(
+                    "http://localhost:8000/api/v1/images/upload",
+                    files=files,
+                    timeout=30
+                )
+            
+            self.set_loading(False)
+            if response.status_code == 201:
+                if self.main_window:
+                    self.main_window.show_toast("Image uploaded successfully!", "success")
+                self.load_images()
+            else:
+                if self.main_window:
+                    self.main_window.show_toast(f"Upload failed: {response.text}", "error")
+        except Exception as e:
+            self.set_loading(False)
+            if self.main_window:
+                self.main_window.show_toast(f"Upload error: {str(e)}", "error")
     
     def delete_image(self):
         """Delete selected image."""
@@ -243,15 +658,18 @@ class ImageUploadTab(QWidget):
                 
                 self.set_loading(False)
                 if response.status_code in [200, 204]:
-                    QMessageBox.information(self, "Success", "Image deleted successfully!")
+                    if self.main_window:
+                        self.main_window.show_toast("Image deleted successfully!", "success")
                     self.load_images()
                     self.selected_image_id = None
                     self.delete_btn.setEnabled(False)
                 else:
-                    QMessageBox.critical(self, "Error", f"Delete failed: {response.text}")
+                    if self.main_window:
+                        self.main_window.show_toast(f"Delete failed: {response.text}", "error")
             except Exception as e:
                 self.set_loading(False)
-                QMessageBox.critical(self, "Error", f"Delete error: {str(e)}")
+                if self.main_window:
+                    self.main_window.show_toast(f"Delete error: {str(e)}", "error")
     
     def on_image_selected(self, item):
         """Handle image selection."""
@@ -266,7 +684,8 @@ class ImageUploadTab(QWidget):
     def on_error(self, error_msg):
         """Handle errors."""
         self.set_loading(False)
-        QMessageBox.critical(self, "Error", error_msg)
+        if self.main_window:
+            self.main_window.show_toast(error_msg, "error")
     
     def cleanup_workers(self):
         """Clean up running workers."""
@@ -280,8 +699,9 @@ class ImageUploadTab(QWidget):
 class AnalysisTab(QWidget):
     """Tab for viewing and editing image analysis."""
     
-    def __init__(self):
+    def __init__(self, main_window=None):
         super().__init__()
+        self.main_window = main_window
         self.current_image_id = None
         self.workers = []  # Track workers for cleanup
         self.init_ui()
@@ -316,24 +736,20 @@ class AnalysisTab(QWidget):
         
         self.title_edit = QLineEdit()
         self.title_edit.setPlaceholderText("Image title")
-        self.subject_edit = QTextEdit()
-        self.subject_edit.setMaximumHeight(80)
-        self.subject_edit.setPlaceholderText("Subject description")
-        self.character_edit = QTextEdit()
-        self.character_edit.setMaximumHeight(80)
-        self.character_edit.setPlaceholderText("Character description")
-        self.environment_edit = QTextEdit()
-        self.environment_edit.setMaximumHeight(80)
-        self.environment_edit.setPlaceholderText("Environment description")
+        self.subject_edit = TextEditWithCounter(placeholder="Subject description")
+        self.subject_edit.setMaximumHeight(100)
+        self.character_edit = TextEditWithCounter(placeholder="Character description")
+        self.character_edit.setMaximumHeight(100)
+        self.environment_edit = TextEditWithCounter(placeholder="Environment description")
+        self.environment_edit.setMaximumHeight(100)
         self.art_style_edit = QLineEdit()
         self.art_style_edit.setPlaceholderText("Art style")
         self.mood_edit = QLineEdit()
         self.mood_edit.setPlaceholderText("Mood")
         self.genre_edit = QLineEdit()
         self.genre_edit.setPlaceholderText("Genre")
-        self.technical_edit = QTextEdit()
-        self.technical_edit.setMaximumHeight(80)
-        self.technical_edit.setPlaceholderText("Technical details")
+        self.technical_edit = TextEditWithCounter(placeholder="Technical details")
+        self.technical_edit.setMaximumHeight(100)
         
         # Set all fields to read-only by default
         self.title_edit.setReadOnly(True)
@@ -361,7 +777,7 @@ class AnalysisTab(QWidget):
             """)
         
         for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-            widget.setStyleSheet("""
+            widget.text_edit.setStyleSheet("""
                 QTextEdit {
                     padding: 8px;
                     border: 1px solid #ddd;
@@ -528,7 +944,8 @@ class AnalysisTab(QWidget):
     def analyze_image(self):
         """Analyze the current image."""
         if not self.current_image_id:
-            QMessageBox.warning(self, "Warning", "Please select an image first")
+            if self.main_window:
+                self.main_window.show_toast("Please select an image first", "warning")
             return
         
         self.set_loading(True, "Analyzing image with AI...")
@@ -587,14 +1004,17 @@ class AnalysisTab(QWidget):
             
             self.set_loading(False)
             if response.status_code in [200, 201]:
-                QMessageBox.information(self, "Success", "Analysis saved successfully!")
+                if self.main_window:
+                    self.main_window.show_toast("Analysis saved successfully!", "success")
                 # Exit edit mode after saving
                 self.set_edit_mode(False)
             else:
-                QMessageBox.critical(self, "Error", f"Save failed: {response.text}")
+                if self.main_window:
+                    self.main_window.show_toast(f"Save failed: {response.text}", "error")
         except Exception as e:
             self.set_loading(False)
-            QMessageBox.critical(self, "Error", f"Save error: {str(e)}")
+            if self.main_window:
+                self.main_window.show_toast(f"Save error: {str(e)}", "error")
     
     def toggle_edit_mode(self):
         """Toggle between read-only and edit mode."""
@@ -643,7 +1063,7 @@ class AnalysisTab(QWidget):
                     }
                 """)
             for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-                widget.setStyleSheet("""
+                widget.text_edit.setStyleSheet("""
                     QTextEdit {
                         padding: 8px;
                         border: 1px solid #2196F3;
@@ -681,7 +1101,7 @@ class AnalysisTab(QWidget):
                     }
                 """)
             for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-                widget.setStyleSheet("""
+                widget.text_edit.setStyleSheet("""
                     QTextEdit {
                         padding: 8px;
                         border: 1px solid #ddd;
@@ -693,7 +1113,8 @@ class AnalysisTab(QWidget):
     def on_error(self, error_msg):
         """Handle errors."""
         self.set_loading(False)
-        QMessageBox.critical(self, "Error", error_msg)
+        if self.main_window:
+            self.main_window.show_toast(error_msg, "error")
     
     def cleanup_workers(self):
         """Clean up running workers."""
@@ -725,8 +1146,9 @@ class AnalysisTab(QWidget):
 class ContentTab(QWidget):
     """Tab for generating and editing platform-specific content."""
     
-    def __init__(self):
+    def __init__(self, main_window=None):
         super().__init__()
+        self.main_window = main_window
         self.current_image_id = None
         self.content_edits = {}  # Store text edits for each platform
         self.workers = []  # Track workers for cleanup
@@ -785,22 +1207,19 @@ class ContentTab(QWidget):
         twitter_tab = QWidget()
         twitter_layout = QVBoxLayout()
         twitter_layout.addWidget(QLabel("<b>Short Version</b>"))
-        twitter_short = QTextEdit()
-        twitter_short.setPlaceholderText("Short tweet (under 280 chars)")
+        twitter_short = TextEditWithCounterAndCopy(max_chars=280, placeholder="Short tweet (under 280 chars)")
         twitter_short.setReadOnly(True)
-        twitter_short.setMaximumHeight(80)
+        twitter_short.setMaximumHeight(100)
         twitter_layout.addWidget(twitter_short)
         
         twitter_layout.addWidget(QLabel("<b>Medium Version</b>"))
-        twitter_medium = QTextEdit()
-        twitter_medium.setPlaceholderText("Medium-length tweet")
+        twitter_medium = TextEditWithCounterAndCopy(max_chars=280, placeholder="Medium-length tweet")
         twitter_medium.setReadOnly(True)
-        twitter_medium.setMaximumHeight(100)
+        twitter_medium.setMaximumHeight(120)
         twitter_layout.addWidget(twitter_medium)
         
         twitter_layout.addWidget(QLabel("<b>Engagement Version</b>"))
-        twitter_engagement = QTextEdit()
-        twitter_engagement.setPlaceholderText("Engagement-focused tweet with hashtags")
+        twitter_engagement = TextEditWithCounterAndCopy(max_chars=280, placeholder="Engagement-focused tweet with hashtags")
         twitter_engagement.setReadOnly(True)
         twitter_layout.addWidget(twitter_engagement)
         
@@ -816,16 +1235,14 @@ class ContentTab(QWidget):
         instagram_tab = QWidget()
         instagram_layout = QVBoxLayout()
         instagram_layout.addWidget(QLabel("<b>Caption</b>"))
-        instagram_caption = QTextEdit()
-        instagram_caption.setPlaceholderText("Instagram caption")
+        instagram_caption = TextEditWithCounterAndCopy(placeholder="Instagram caption")
         instagram_caption.setReadOnly(True)
         instagram_layout.addWidget(instagram_caption)
         
         instagram_layout.addWidget(QLabel("<b>Hashtags</b>"))
-        instagram_hashtags = QTextEdit()
-        instagram_hashtags.setPlaceholderText("Hashtags (comma-separated)")
+        instagram_hashtags = TextEditWithCounterAndCopy(placeholder="Hashtags (comma-separated)")
         instagram_hashtags.setReadOnly(True)
-        instagram_hashtags.setMaximumHeight(80)
+        instagram_hashtags.setMaximumHeight(100)
         instagram_layout.addWidget(instagram_hashtags)
         
         instagram_tab.setLayout(instagram_layout)
@@ -839,15 +1256,13 @@ class ContentTab(QWidget):
         reddit_tab = QWidget()
         reddit_layout = QVBoxLayout()
         reddit_layout.addWidget(QLabel("<b>Title</b>"))
-        reddit_title = QTextEdit()
-        reddit_title.setPlaceholderText("Post title")
+        reddit_title = TextEditWithCounterAndCopy(max_chars=300, placeholder="Post title")
         reddit_title.setReadOnly(True)
-        reddit_title.setMaximumHeight(60)
+        reddit_title.setMaximumHeight(80)
         reddit_layout.addWidget(reddit_title)
         
         reddit_layout.addWidget(QLabel("<b>Body</b>"))
-        reddit_body = QTextEdit()
-        reddit_body.setPlaceholderText("Post body content")
+        reddit_body = TextEditWithCounterAndCopy(placeholder="Post body content")
         reddit_body.setReadOnly(True)
         reddit_layout.addWidget(reddit_body)
         
@@ -862,23 +1277,20 @@ class ContentTab(QWidget):
         artstation_tab = QWidget()
         artstation_layout = QVBoxLayout()
         artstation_layout.addWidget(QLabel("<b>Title</b>"))
-        artstation_title = QTextEdit()
-        artstation_title.setPlaceholderText("Artwork title")
+        artstation_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         artstation_title.setReadOnly(True)
-        artstation_title.setMaximumHeight(60)
+        artstation_title.setMaximumHeight(80)
         artstation_layout.addWidget(artstation_title)
         
         artstation_layout.addWidget(QLabel("<b>Description</b>"))
-        artstation_description = QTextEdit()
-        artstation_description.setPlaceholderText("Artwork description")
+        artstation_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         artstation_description.setReadOnly(True)
         artstation_layout.addWidget(artstation_description)
         
         artstation_layout.addWidget(QLabel("<b>Tags</b>"))
-        artstation_tags = QTextEdit()
-        artstation_tags.setPlaceholderText("SEO tags")
+        artstation_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         artstation_tags.setReadOnly(True)
-        artstation_tags.setMaximumHeight(80)
+        artstation_tags.setMaximumHeight(100)
         artstation_layout.addWidget(artstation_tags)
         
         artstation_tab.setLayout(artstation_layout)
@@ -893,23 +1305,20 @@ class ContentTab(QWidget):
         deviantart_tab = QWidget()
         deviantart_layout = QVBoxLayout()
         deviantart_layout.addWidget(QLabel("<b>Title</b>"))
-        deviantart_title = QTextEdit()
-        deviantart_title.setPlaceholderText("Artwork title")
+        deviantart_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         deviantart_title.setReadOnly(True)
-        deviantart_title.setMaximumHeight(60)
+        deviantart_title.setMaximumHeight(80)
         deviantart_layout.addWidget(deviantart_title)
         
         deviantart_layout.addWidget(QLabel("<b>Description</b>"))
-        deviantart_description = QTextEdit()
-        deviantart_description.setPlaceholderText("Artwork description")
+        deviantart_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         deviantart_description.setReadOnly(True)
         deviantart_layout.addWidget(deviantart_description)
         
         deviantart_layout.addWidget(QLabel("<b>Tags</b>"))
-        deviantart_tags = QTextEdit()
-        deviantart_tags.setPlaceholderText("SEO tags")
+        deviantart_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         deviantart_tags.setReadOnly(True)
-        deviantart_tags.setMaximumHeight(80)
+        deviantart_tags.setMaximumHeight(100)
         deviantart_layout.addWidget(deviantart_tags)
         
         deviantart_tab.setLayout(deviantart_layout)
@@ -923,7 +1332,7 @@ class ContentTab(QWidget):
         # Apply consistent styling to all fields
         for platform, fields in self.content_edits.items():
             for field_name, field_edit in fields.items():
-                field_edit.setStyleSheet("""
+                field_edit.text_edit.setStyleSheet("""
                     QTextEdit {
                         padding: 12px;
                         border: 1px solid #ddd;
@@ -1139,7 +1548,8 @@ class ContentTab(QWidget):
     def generate_content(self):
         """Generate content for current image."""
         if not self.current_image_id:
-            QMessageBox.warning(self, "Warning", "Please select an image first")
+            if self.main_window:
+                self.main_window.show_toast("Please select an image first", "warning")
             return
         
         self.set_loading(True, "Generating content with AI...")
@@ -1157,12 +1567,15 @@ class ContentTab(QWidget):
     def on_content_generated(self, data):
         """Handle content generation completion."""
         # After generation, reload the content from the database
+        if self.main_window:
+            self.main_window.show_toast("Content generated successfully!", "success")
         self.load_content()
     
     def on_error(self, error_msg):
         """Handle errors."""
         self.set_loading(False)
-        QMessageBox.critical(self, "Error", error_msg)
+        if self.main_window:
+            self.main_window.show_toast(error_msg, "error")
     
     def cleanup_workers(self):
         """Clean up running workers."""
@@ -1221,7 +1634,7 @@ class ContentTab(QWidget):
             # Update field backgrounds for edit mode
             for platform, fields in self.content_edits.items():
                 for field_name, field_edit in fields.items():
-                    field_edit.setStyleSheet("""
+                    field_edit.text_edit.setStyleSheet("""
                         QTextEdit {
                             padding: 12px;
                             border: 1px solid #9C27B0;
@@ -1248,7 +1661,7 @@ class ContentTab(QWidget):
             # Update field backgrounds for read-only mode
             for platform, fields in self.content_edits.items():
                 for field_name, field_edit in fields.items():
-                    field_edit.setStyleSheet("""
+                    field_edit.text_edit.setStyleSheet("""
                         QTextEdit {
                             padding: 12px;
                             border: 1px solid #ddd;
@@ -1275,9 +1688,9 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         
         # Create tabs
-        self.upload_tab = ImageUploadTab()
-        self.analysis_tab = AnalysisTab()
-        self.content_tab = ContentTab()
+        self.upload_tab = ImageUploadTab(self)
+        self.analysis_tab = AnalysisTab(self)
+        self.content_tab = ContentTab(self)
         
         # Connect image selection signal to clear forms
         self.upload_tab.image_selected.connect(self.on_image_selected)
@@ -1308,6 +1721,11 @@ class MainWindow(QMainWindow):
                     self.analysis_tab.set_image(selected_image_id)
                 elif index == 2:  # Content tab
                     self.content_tab.set_image(selected_image_id)
+    
+    def show_toast(self, message, message_type="success"):
+        """Show a toast notification."""
+        toast = ToastNotification(message, message_type, self)
+        toast.show()
     
     def closeEvent(self, event):
         """Handle window close event."""
