@@ -28,7 +28,7 @@ class ThemeManager:
         "surface": "#0a0a0a",
         "border": "#00FF00",
         "text_primary": "#00FF00",
-        "text_secondary": "#00CC00",
+        "text_secondary": "#00FF00",  # Made brighter for readability
         "primary": "#00FFFF",
         "primary_hover": "#00DDDD",
         "success": "#00FF00",
@@ -75,8 +75,8 @@ class ThemeManager:
         "background": "#0a0a0a",
         "surface": "#151515",
         "border": "#333333",
-        "text_primary": "#e0e0e0",
-        "text_secondary": "#b0b0b0",
+        "text_primary": "#ffffff",  # Changed from #e0e0e0 to pure white
+        "text_secondary": "#e0e0e0",  # Changed from #b0b0b0 to brighter
         "primary": "#64B5F6",
         "primary_hover": "#42A5F5",
         "success": "#81C784",
@@ -194,7 +194,7 @@ class ThemeManager:
             }}
             QLineEdit[readOnly="true"] {{
                 background-color: {colors['surface']};
-                color: {colors['text_secondary']};
+                color: {colors['text_primary']};  # Use primary text for better readability
                 border: 1px solid {colors['border']};
             }}
             QTextEdit {{
@@ -210,6 +210,11 @@ class ThemeManager:
             QTextEdit:focus {{
                 border: 2px solid {colors['input_focus']};
                 background-color: {colors['background']};
+            }}
+            QTextEdit[readOnly="true"] {{
+                background-color: {colors['surface']};
+                color: {colors['text_primary']};  # Use primary text for better readability
+                border: 1px solid {colors['border']};
             }}
             QGroupBox {{
                 border: 1px solid {colors['card_border']};
