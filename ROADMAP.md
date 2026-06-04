@@ -1,4 +1,4 @@
-# ArtForge Publisher - Development Roadmap
+ # ArtForge Publisher - Development Roadmap
 
 ## Overview
 ArtForge Publisher is a desktop application for analyzing artwork and generating platform-specific social media content. This roadmap tracks development progress across UI overhaul and platform posting features.
@@ -25,6 +25,10 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Character counters for all text fields (Twitter 280 char limit warning)
 - [x] Copy-to-clipboard buttons for each content field
 - [x] Drag-and-drop image upload with visual feedback
+- [x] Image thumbnail previews on hover (image list)
+- [x] Image preview boxes in Analysis and Content tabs
+- [x] Theme system with Light, Dark, and Retro modes
+- [x] Comprehensive tooltips for all UI elements
 
 ### 🚧 High Priority UI Tasks
 - [x] Character counters for text fields (Twitter 280 char limit)
@@ -44,6 +48,9 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Custom fonts (Inter, Roboto, or similar)
 - [x] Smooth animations and transitions
 - [x] Loading spinners and skeleton screens
+- [x] Logs page which hooks in with the Ollama console output
+- [x] Hide the Ollama console and backend console as hidden taskbar items so they do not flood the users screen unless they want to see them
+- [x] Make a proper exit program protocol which closes all processes and windows gracefully (Ollama, Backend, Main App)
 - [ ] Status bar with connection status and last action
 - [ ] Toolbar with quick action buttons
 - [ ] Menu bar with File, Edit, View, Help menus
@@ -55,7 +62,7 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [ ] Visual indicators for required vs optional fields
 
 ### 🔧 Low Priority UI Tasks
-- [ ] Tooltips and help text for complex fields
+- [x] Tooltips and help text for complex fields
 - [ ] Keyboard shortcuts (Ctrl+S to save, etc.)
 - [ ] Context menus for right-click actions
 - [ ] Splash screen with logo and loading animation
@@ -65,7 +72,7 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [ ] Undo/redo functionality for content edits
 - [ ] Custom scrollbars
 - [ ] Accessibility features (screen reader, keyboard nav)
-- [ ] Hover effects and active states
+- [x] Hover effects and active states
 - [ ] Professional app icon and window icon
 - [ ] Window state persistence (size, position, maximized)
 
@@ -261,7 +268,7 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 
 ### Milestone 1: UI Overhaul Complete
 **Target**: Complete all high and medium priority UI tasks
-**Status**: 🚧 In Progress (40% complete)
+**Status**: 🚧 In Progress (60% complete)
 
 ### Milestone 2: Platform Authentication
 **Target**: Implement OAuth for all 5 platforms
@@ -290,15 +297,16 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 
 ### Current Focus
 - Completing UI overhaul (Phase 1)
-- High priority: Character counters, copy-to-clipboard, drag-and-drop
+- High priority: Character counters, copy-to-clipboard, drag-and-drop ✅
+- Recent additions: Image previews, theme system, tooltips
 
 ### Next Steps
-1. Complete remaining high-priority UI tasks
+1. Complete remaining medium-priority UI tasks (status bar, toolbar, menu bar)
 2. Begin Phase 2 platform authentication research
 3. Design posting workflow UI
 4. Implement OAuth for first platform (X/Twitter)
 
 ---
 
-**Last Updated**: June 3, 2026
+**Last Updated**: June 4, 2026
 **Version**: 0.1.0-alpha

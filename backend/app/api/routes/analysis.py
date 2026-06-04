@@ -1,6 +1,8 @@
 """API routes for image analysis."""
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas import AnalysisRequest, AnalysisResponse, AnalysisUpdate
 from app.dependencies import get_analysis_repository, get_image_repository, get_prompt_repository
@@ -100,6 +102,55 @@ async def analyze_image(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to analyze image"
         )
+
+
+@router.get("/analyze/stream")
+async def analyze_image_stream(
+    image_id: str,
+    analysis_repo = Depends(get_analysis_repository),
+    image_repo = Depends(get_image_repository),
+    prompt_repo = Depends(get_prompt_repository)
+):
+    """Analyze an image using the vision model with streaming response.
+    
+    Args:
+        image_id: Image ID to analyze
+        analysis_repo: Analysis repository
+        image_repo: Image repository
+        prompt_repo: Prompt repository
+        
+    Returns:
+        Streaming response with NDJSON chunks
+    """
+    async def event_generator():
+        try:
+            # Get image
+            image = image_repo.get(image_id)
+            if not image:
+                yield f"data: {json.dumps({'error': 'Image not found'})}\n\n"
+                return
+            
+            # Get prompt
+            prompt_service = PromptService(prompt_repo)
+            prompt = prompt_service.get_prompt_content("vision_analysis")
+            if not prompt:
+                yield f"data: {json.dumps({'error': 'Vision analysis prompt not found'})}\n\n"
+                return
+            
+            # Stream analysis from Ollama
+            ollama_client = OllamaClient()
+            async for chunk in ollama_client.analyze_image_stream(image.original_path, prompt):
+                # Send chunk as NDJSON
+                yield f"data: {json.dumps({'content': chunk})}\n\n"
+            
+            # Send completion signal
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming analysis error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/{image_id}", response_model=AnalysisResponse)

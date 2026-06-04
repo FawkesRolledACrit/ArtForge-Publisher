@@ -1,6 +1,9 @@
 """API routes for image management."""
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.api.schemas import ImageCreate, ImageListResponse, ImageResponse, ImageUpdate
@@ -162,3 +165,36 @@ async def update_image(
         )
     
     return image_repo.get(image_id)
+
+
+@router.get("/{image_id}/file")
+async def get_image_file(
+    image_id: str,
+    image_repo = Depends(get_image_repository)
+):
+    """Get image file by ID.
+    
+    Args:
+        image_id: Image ID
+        image_repo: Image repository
+        
+    Returns:
+        Image file
+    """
+    image = image_repo.get(image_id)
+    if not image:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image not found"
+        )
+    
+    # Return the thumbnail if available, otherwise return original
+    file_path = image.thumbnail_path if image.thumbnail_path else image.original_path
+    
+    if not file_path or not Path(file_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Image file not found"
+        )
+    
+    return FileResponse(file_path)

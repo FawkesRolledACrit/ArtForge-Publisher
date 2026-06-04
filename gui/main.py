@@ -9,10 +9,67 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout,
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
-    QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton
+    QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton,
+    QComboBox, QCheckBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect, QUrl, QBuffer, QIODevice
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient
+from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+
+
+class StreamingWorker(QThread):
+    """Worker for handling SSE streaming from backend."""
+    
+    received_chunk = pyqtSignal(str)
+    finished = pyqtSignal()
+    error = pyqtSignal(str)
+    
+    def __init__(self, url):
+        super().__init__()
+        self.url = url
+        self.running = True
+    
+    def run(self):
+        """Run the streaming worker."""
+        try:
+            response = requests.get(self.url, stream=True, timeout=600)  # Increased timeout
+            response.raise_for_status()
+            
+            buffer = ""
+            for line in response.iter_lines():
+                if not self.running:
+                    break
+                    
+                if line:
+                    line_str = line.decode('utf-8')
+                    buffer += line_str
+                    # Process complete messages
+                    while '\n\n' in buffer:
+                        message, buffer = buffer.split('\n\n', 1)
+                        if message.startswith('data: '):
+                            data_str = message[6:]  # Remove 'data: ' prefix
+                            try:
+                                data = json.loads(data_str)
+                                if 'content' in data:
+                                    self.received_chunk.emit(data['content'])
+                                elif 'error' in data:
+                                    self.error.emit(data['error'])
+                                elif 'done' in data and data['done']:
+                                    self.finished.emit()
+                                    break
+                            except json.JSONDecodeError:
+                                pass
+                                    
+        except requests.RequestException as e:
+            self.error.emit(f"Request error: {str(e)}")
+        except Exception as e:
+            self.error.emit(f"Streaming error: {str(e)}")
+    
+    def stop(self):
+        """Stop the streaming worker."""
+        self.running = False
+        self.quit()
+        self.wait()
 
 
 class ThemeManager:
@@ -31,14 +88,14 @@ class ThemeManager:
         "text_secondary": "#00FF00",  # Made brighter for readability
         "primary": "#00FFFF",
         "primary_hover": "#00DDDD",
-        "success": "#00FF00",
-        "success_hover": "#00CC00",
-        "warning": "#FFFF00",
-        "warning_hover": "#DDDD00",
-        "danger": "#FF00FF",
-        "danger_hover": "#DD00DD",
-        "purple": "#FF00FF",
-        "purple_hover": "#DD00DD",
+        "success": "#006600",  # Very dark matrix green
+        "success_hover": "#004400",  # Even darker for hover
+        "warning": "#666600",  # Very muted yellow
+        "warning_hover": "#444400",  # Darker yellow for hover
+        "danger": "#660066",  # Very muted magenta
+        "danger_hover": "#440044",  # Darker magenta for hover
+        "purple": "#660066",  # Same as danger for consistency
+        "purple_hover": "#440044",
         "input_bg": "#111111",
         "input_border": "#00FF00",
         "input_focus": "#00FFFF",
@@ -347,7 +404,7 @@ class TextEditWithCounter(QWidget):
         
         # Counter label
         self.counter_label = QLabel("0 characters")
-        self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.counter_label.setStyleSheet(f"color: {theme_manager.get_theme_colors()['text_secondary']}; font-size: 10px;")
         self.counter_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         layout.addWidget(self.counter_label)
         
@@ -358,19 +415,22 @@ class TextEditWithCounter(QWidget):
         text = self.text_edit.toPlainText()
         count = len(text)
         
+        colors = theme_manager.get_theme_colors()
+        
         if self.max_chars:
             remaining = self.max_chars - count
             if remaining < 0:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters ({abs(remaining)} over limit!)")
-                self.counter_label.setStyleSheet("color: #f44336; font-size: 10px; font-weight: bold;")
+                self.counter_label.setStyleSheet(f"color: {colors['danger']}; font-size: 10px; font-weight: bold;")
             elif remaining < 20:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters ({remaining} remaining)")
-                self.counter_label.setStyleSheet("color: #ff9800; font-size: 10px;")
+                self.counter_label.setStyleSheet(f"color: {colors['warning']}; font-size: 10px;")
             else:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters")
-                self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+                self.counter_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 10px;")
         else:
             self.counter_label.setText(f"{count} characters")
+            self.counter_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 10px;")
     
     def setPlainText(self, text):
         """Set text and update counter."""
@@ -439,22 +499,24 @@ class TextEditWithCounterAndCopy(QWidget):
         
         # Counter label
         self.counter_label = QLabel("0 characters")
-        self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+        self.counter_label.setStyleSheet(f"color: {theme_manager.get_theme_colors()['text_secondary']}; font-size: 10px;")
         
         # Copy button
         self.copy_btn = QPushButton("📋 Copy")
-        self.copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
+        self.copy_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
                 border: none;
                 padding: 4px 12px;
                 font-size: 10px;
                 border-radius: 3px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
         """)
         self.copy_btn.clicked.connect(self.copy_to_clipboard)
         
@@ -470,19 +532,22 @@ class TextEditWithCounterAndCopy(QWidget):
         text = self.text_edit.toPlainText()
         count = len(text)
         
+        colors = theme_manager.get_theme_colors()
+        
         if self.max_chars:
             remaining = self.max_chars - count
             if remaining < 0:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters ({abs(remaining)} over limit!)")
-                self.counter_label.setStyleSheet("color: #f44336; font-size: 10px; font-weight: bold;")
+                self.counter_label.setStyleSheet(f"color: {colors['danger']}; font-size: 10px; font-weight: bold;")
             elif remaining < 20:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters ({remaining} remaining)")
-                self.counter_label.setStyleSheet("color: #ff9800; font-size: 10px;")
+                self.counter_label.setStyleSheet(f"color: {colors['warning']}; font-size: 10px;")
             else:
                 self.counter_label.setText(f"{count}/{self.max_chars} characters")
-                self.counter_label.setStyleSheet("color: #666; font-size: 10px;")
+                self.counter_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 10px;")
         else:
             self.counter_label.setText(f"{count} characters")
+            self.counter_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 10px;")
     
     def copy_to_clipboard(self):
         """Copy text to clipboard."""
@@ -491,15 +556,17 @@ class TextEditWithCounterAndCopy(QWidget):
         clipboard.setText(text)
         # Visual feedback
         self.copy_btn.setText("✓ Copied!")
-        self.copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
+        self.copy_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['primary']};
+                color: {text_color};
                 border: none;
                 padding: 4px 12px;
                 font-size: 10px;
                 border-radius: 3px;
-            }
+            }}
         """)
         # Reset button after 2 seconds
         from PyQt6.QtCore import QTimer
@@ -508,18 +575,20 @@ class TextEditWithCounterAndCopy(QWidget):
     def reset_copy_button(self):
         """Reset copy button to original state."""
         self.copy_btn.setText("📋 Copy")
-        self.copy_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
+        self.copy_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
                 border: none;
                 padding: 4px 12px;
                 font-size: 10px;
                 border-radius: 3px;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
         """)
     
     def setPlainText(self, text):
@@ -775,11 +844,14 @@ class SkeletonWidget(QWidget):
 
 
 class ProgressOverlay(QWidget):
-    """Progress overlay widget for long-running operations."""
+    """Progress overlay widget for long-running operations with real-time streaming log display."""
     
     def __init__(self, message="Loading...", parent=None):
         super().__init__(parent)
         self.message = message
+        self.ollama_host = "http://localhost:11434"
+        self.log_timer = None
+        self.streaming_worker = None
         self.init_ui()
     
     def init_ui(self):
@@ -794,12 +866,14 @@ class ProgressOverlay(QWidget):
         container = QFrame()
         container.setStyleSheet("""
             QFrame {
-                background-color: rgba(0, 0, 0, 150);
-                border-radius: 10px;
+                background-color: rgba(0, 0, 0, 200);
+                border-radius: 12px;
+                border: 2px solid #00FF00;
             }
         """)
         container_layout = QVBoxLayout()
         container_layout.setContentsMargins(30, 30, 30, 30)
+        container_layout.setSpacing(15)
         
         # Animated spinner
         self.spinner = SpinnerWidget(size=48)
@@ -807,9 +881,33 @@ class ProgressOverlay(QWidget):
         
         # Message
         self.message_label = QLabel(self.message)
-        self.message_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+        self.message_label.setStyleSheet("color: #00FF00; font-size: 16px; font-weight: bold;")
         self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         container_layout.addWidget(self.message_label)
+        
+        # Log display area for streaming tokens
+        self.log_display = QTextEdit()
+        self.log_display.setReadOnly(True)
+        self.log_display.setMaximumHeight(250)
+        self.log_display.setMinimumHeight(150)
+        self.log_display.setStyleSheet("""
+            QTextEdit {
+                background-color: rgba(0, 0, 0, 180);
+                color: #00FF00;
+                border: 1px solid #00FF00;
+                border-radius: 8px;
+                padding: 10px;
+                font-family: Consolas, monospace;
+                font-size: 11px;
+            }
+        """)
+        container_layout.addWidget(self.log_display)
+        
+        # Status label
+        self.status_label = QLabel("Initializing...")
+        self.status_label.setStyleSheet("color: #00FFFF; font-size: 12px; font-style: italic;")
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container_layout.addWidget(self.status_label)
         
         container.setLayout(container_layout)
         layout.addWidget(container)
@@ -825,14 +923,52 @@ class ProgressOverlay(QWidget):
         self.spinner.start()
     
     def hide(self):
-        """Hide the overlay and stop spinner."""
+        """Hide the overlay and stop spinner and streaming."""
         self.spinner.stop()
+        if self.streaming_worker:
+            self.streaming_worker.stop()
+            self.streaming_worker = None
         super().hide()
     
     def set_message(self, message):
         """Update the progress message."""
         self.message = message
         self.message_label.setText(message)
+    
+    def set_streaming_url(self, url):
+        """Set the streaming URL for real-time token display."""
+        self.streaming_url = url
+    
+    def start_streaming_worker(self):
+        """Start the streaming worker for real-time token display."""
+        self.log_display.clear()
+        self.status_label.setText("Connecting to AI...")
+        
+        if hasattr(self, 'streaming_url') and self.streaming_url:
+            self.streaming_worker = StreamingWorker(self.streaming_url)
+            self.streaming_worker.received_chunk.connect(self.append_streaming_chunk)
+            self.streaming_worker.finished.connect(self.on_streaming_finished)
+            self.streaming_worker.error.connect(self.on_streaming_error)
+            self.streaming_worker.start()
+    
+    def append_streaming_chunk(self, chunk):
+        """Append a streaming chunk to the display."""
+        self.log_display.insertPlainText(chunk)
+        # Auto-scroll to bottom
+        cursor = self.log_display.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.log_display.setTextCursor(cursor)
+        self.status_label.setText("Receiving AI response...")
+    
+    def on_streaming_finished(self):
+        """Handle streaming completion."""
+        self.status_label.setText("✓ Analysis complete!")
+        self.log_display.append("\n[COMPLETE] Finished successfully")
+    
+    def on_streaming_error(self, error):
+        """Handle streaming error."""
+        self.status_label.setText("✗ Error occurred")
+        self.log_display.append(f"\n[ERROR] {error}")
 
 
 class CollapsibleGroupBox(QGroupBox):
@@ -948,6 +1084,7 @@ class ImageUploadTab(QWidget):
         self.images = {}  # Store image data
         self.selected_image_id = None
         self.workers = []  # Track workers for cleanup
+        self.network_managers = []  # Track network managers for cleanup
         self.setAcceptDrops(True)  # Enable drag-and-drop
         self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
@@ -957,17 +1094,18 @@ class ImageUploadTab(QWidget):
         """Handle drag enter event."""
         if event.mimeData().hasUrls():
             event.accept()
-            self.drop_zone.setStyleSheet("""
-                QFrame {
-                    border: 3px dashed #4CAF50;
+            colors = theme_manager.get_theme_colors()
+            self.drop_zone.setStyleSheet(f"""
+                QFrame {{
+                    border: 3px dashed {colors['success']};
                     border-radius: 10px;
-                    background-color: #e8f5e9;
-                }
-                QLabel {
-                    color: #2e7d32;
+                    background-color: {colors['surface']};
+                }}
+                QLabel {{
+                    color: {colors['text_primary']};
                     font-size: 14px;
                     font-weight: bold;
-                }
+                }}
             """)
         else:
             event.ignore()
@@ -991,16 +1129,17 @@ class ImageUploadTab(QWidget):
     
     def reset_drop_zone_style(self):
         """Reset drop zone to default style."""
-        self.drop_zone.setStyleSheet("""
-            QFrame {
-                border: 2px dashed #ccc;
+        colors = theme_manager.get_theme_colors()
+        self.drop_zone.setStyleSheet(f"""
+            QFrame {{
+                border: 2px dashed {colors['border']};
                 border-radius: 10px;
-                background-color: #f9f9f9;
-            }
-            QLabel {
-                color: #666;
+                background-color: {colors['surface']};
+            }}
+            QLabel {{
+                color: {colors['text_secondary']};
                 font-size: 14px;
-            }
+            }}
         """)
     
     def init_ui(self):
@@ -1028,7 +1167,8 @@ class ImageUploadTab(QWidget):
         
         # Status and progress
         self.status_label = QLabel("Ready")
-        self.status_label.setStyleSheet("color: #666; font-size: 11px;")
+        colors = theme_manager.get_theme_colors()
+        self.status_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 11px;")
         layout.addWidget(self.status_label)
         
         self.progress_bar = QProgressBar()
@@ -1038,20 +1178,22 @@ class ImageUploadTab(QWidget):
         
         # Drag-and-drop zone
         self.drop_zone = QFrame()
-        self.drop_zone.setStyleSheet("""
-            QFrame {
-                border: 2px dashed #ccc;
+        colors = theme_manager.get_theme_colors()
+        self.drop_zone.setStyleSheet(f"""
+            QFrame {{
+                border: 2px dashed {colors['border']};
                 border-radius: 12px;
-                background-color: #f8f9fa;
-            }
-            QLabel {
-                color: #666;
+                background-color: {colors['surface']};
+            }}
+            QLabel {{
+                color: {colors['text_secondary']};
                 font-size: 14px;
-            }
+            }}
         """)
         drop_zone_layout = QVBoxLayout()
         drop_zone_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         drop_zone_label = QLabel("📁 Drag & Drop Images Here\nor click Upload below")
+        drop_zone_label.setToolTip("Drag and drop image files here to upload them automatically")
         drop_zone_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         drop_zone_layout.addWidget(drop_zone_label)
         self.drop_zone.setLayout(drop_zone_layout)
@@ -1059,31 +1201,38 @@ class ImageUploadTab(QWidget):
         layout.addWidget(self.drop_zone)
         
         # Upload button
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
         self.upload_btn = QPushButton("📤 Upload Image")
-        self.upload_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
+        self.upload_btn.setToolTip("Upload a new image file to the database")
+        self.upload_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.upload_btn.clicked.connect(self.upload_image)
         layout.addWidget(self.upload_btn)
         
         # Image list
         list_group = CollapsibleGroupBox("Uploaded Images")
+        list_group.setToolTip("List of all uploaded images. Click to select, hover to preview.")
         list_layout = QVBoxLayout()
         self.image_list = QListWidget()
+        self.image_list.setToolTip("Click an image to select it for analysis and content generation")
+        self.image_list.setMouseTracking(True)  # Enable mouse tracking for hover events
+        self.image_list.itemEntered.connect(self.on_image_hover)
         self.image_list.itemClicked.connect(self.on_image_selected)
         list_layout.addWidget(self.image_list)
         list_group.setLayout(list_layout)
@@ -1091,22 +1240,23 @@ class ImageUploadTab(QWidget):
         
         # Delete button
         self.delete_btn = QPushButton("🗑️ Delete Selected Image")
-        self.delete_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #f44336;
-                color: white;
+        self.delete_btn.setToolTip("Delete the selected image from the database (cannot be undone)")
+        self.delete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['danger']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #da190b;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['danger_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.delete_btn.clicked.connect(self.delete_image)
         self.delete_btn.setEnabled(False)
@@ -1162,6 +1312,49 @@ class ImageUploadTab(QWidget):
             filename = image.get('filename', 'Unknown')
             self.images[image_id] = image
             self.image_list.addItem(f"{filename} - {image_id}")
+    
+    def on_image_hover(self, item):
+        """Handle image hover event to show thumbnail."""
+        text = item.text()
+        # Extract image_id from the text (format: "filename - image_id")
+        if ' - ' in text:
+            image_id = text.split(' - ')[-1]
+            if image_id in self.images:
+                # Get image path
+                image_info = self.images[image_id]
+                thumbnail_path = image_info.get('thumbnail_path') or image_info.get('original_path')
+                if thumbnail_path and thumbnail_path != "null":
+                    # Convert file path to HTTP URL
+                    # Paths are like "storage\thumbnails\thumb_xxx.jpg" or "storage\images\xxx.png"
+                    # Convert to HTTP URL: http://localhost:8000/storage/thumbnails/thumb_xxx.jpg
+                    http_path = thumbnail_path.replace("\\", "/")
+                    image_url = f"http://localhost:8000/{http_path}"
+                    
+                    # Use QNetworkAccessManager to fetch image
+                    manager = QNetworkAccessManager()
+                    self.network_managers.append(manager)  # Keep reference to prevent garbage collection
+                    request = QNetworkRequest(QUrl(image_url))
+                    
+                    def on_reply_finished(reply):
+                        if reply.error() == QNetworkReply.NetworkError.NoError:
+                            image_data = reply.readAll()
+                            pixmap = QPixmap()
+                            if pixmap.loadFromData(image_data):
+                                # Scale to reasonable thumbnail size
+                                scaled_pixmap = pixmap.scaled(200, 200, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                                # Convert to HTML for tooltip
+                                buffer = QBuffer()
+                                buffer.open(QIODevice.OpenModeFlag.ReadWrite)
+                                scaled_pixmap.save(buffer, "PNG")
+                                image_html = buffer.data().toBase64().data().decode()
+                                item.setToolTip(f'<img src="data:image/png;base64,{image_html}" />')
+                        reply.deleteLater()
+                        # Remove manager from list after request completes
+                        if manager in self.network_managers:
+                            self.network_managers.remove(manager)
+                    
+                    manager.finished.connect(on_reply_finished)
+                    manager.get(request)
     
     def upload_image(self):
         """Upload an image."""
@@ -1264,6 +1457,7 @@ class AnalysisTab(QWidget):
         self.main_window = main_window
         self.current_image_id = None
         self.workers = []  # Track workers for cleanup
+        self.network_managers = []  # Track network managers for cleanup
         self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
     
@@ -1294,6 +1488,23 @@ class AnalysisTab(QWidget):
         self.instruction_label = QLabel("Select an image from the Upload tab to view/edit analysis")
         layout.addWidget(self.instruction_label)
         
+        # Image preview box
+        self.image_preview_label = QLabel()
+        self.image_preview_label.setMinimumSize(200, 200)
+        self.image_preview_label.setMaximumSize(400, 400)
+        self.image_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_preview_label.setToolTip("Preview of the currently selected image for analysis")
+        colors = theme_manager.get_theme_colors()
+        self.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                border: 2px solid {colors['border']};
+                border-radius: 8px;
+                background-color: {colors['surface']};
+            }}
+        """)
+        self.image_preview_label.setText("No image selected")
+        layout.addWidget(self.image_preview_label, 0, Qt.AlignmentFlag.AlignCenter)
+        
         # Status and progress
         self.status_label = QLabel("Ready")
         layout.addWidget(self.status_label)
@@ -1308,9 +1519,11 @@ class AnalysisTab(QWidget):
         
         # Title section
         title_group = CollapsibleGroupBox("Title")
+        title_group.setToolTip("The main title or subject of the image")
         title_layout = QVBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setPlaceholderText("Image title")
+        self.title_edit.setToolTip("Enter a descriptive title for the image")
         self.title_edit.setReadOnly(True)
         title_layout.addWidget(self.title_edit)
         title_group.setLayout(title_layout)
@@ -1318,8 +1531,10 @@ class AnalysisTab(QWidget):
         
         # Subject section
         subject_group = CollapsibleGroupBox("Subject")
+        subject_group.setToolTip("Detailed description of the main subject or focal point")
         subject_layout = QVBoxLayout()
         self.subject_edit = TextEditWithCounter(placeholder="Subject description")
+        self.subject_edit.setToolTip("Describe the main subject or focal point of the image in detail")
         self.subject_edit.setMaximumHeight(100)
         self.subject_edit.setReadOnly(True)
         subject_layout.addWidget(self.subject_edit)
@@ -1328,8 +1543,10 @@ class AnalysisTab(QWidget):
         
         # Character section
         character_group = CollapsibleGroupBox("Character")
+        character_group.setToolTip("Description of any characters present in the image")
         character_layout = QVBoxLayout()
         self.character_edit = TextEditWithCounter(placeholder="Character description")
+        self.character_edit.setToolTip("Describe any characters, people, or figures in the image")
         self.character_edit.setMaximumHeight(100)
         self.character_edit.setReadOnly(True)
         character_layout.addWidget(self.character_edit)
@@ -1338,8 +1555,10 @@ class AnalysisTab(QWidget):
         
         # Environment section
         environment_group = CollapsibleGroupBox("Environment")
+        environment_group.setToolTip("Description of the setting, background, and surroundings")
         environment_layout = QVBoxLayout()
         self.environment_edit = TextEditWithCounter(placeholder="Environment description")
+        self.environment_edit.setToolTip("Describe the setting, background, and environmental elements")
         self.environment_edit.setMaximumHeight(100)
         self.environment_edit.setReadOnly(True)
         environment_layout.addWidget(self.environment_edit)
@@ -1348,9 +1567,11 @@ class AnalysisTab(QWidget):
         
         # Art Style section
         art_style_group = CollapsibleGroupBox("Art Style")
+        art_style_group.setToolTip("The artistic style, medium, or technique used")
         art_style_layout = QVBoxLayout()
         self.art_style_edit = QLineEdit()
         self.art_style_edit.setPlaceholderText("Art style")
+        self.art_style_edit.setToolTip("Enter the art style (e.g., digital painting, watercolor, pixel art)")
         self.art_style_edit.setReadOnly(True)
         art_style_layout.addWidget(self.art_style_edit)
         art_style_group.setLayout(art_style_layout)
@@ -1358,9 +1579,11 @@ class AnalysisTab(QWidget):
         
         # Mood section
         mood_group = CollapsibleGroupBox("Mood")
+        mood_group.setToolTip("The emotional tone or atmosphere of the image")
         mood_layout = QVBoxLayout()
         self.mood_edit = QLineEdit()
         self.mood_edit.setPlaceholderText("Mood")
+        self.mood_edit.setToolTip("Enter the mood or emotional atmosphere (e.g., peaceful, dark, energetic)")
         self.mood_edit.setReadOnly(True)
         mood_layout.addWidget(self.mood_edit)
         mood_group.setLayout(mood_layout)
@@ -1368,9 +1591,11 @@ class AnalysisTab(QWidget):
         
         # Genre section
         genre_group = CollapsibleGroupBox("Genre")
+        genre_group.setToolTip("The category or genre of the artwork")
         genre_layout = QVBoxLayout()
         self.genre_edit = QLineEdit()
         self.genre_edit.setPlaceholderText("Genre")
+        self.genre_edit.setToolTip("Enter the genre (e.g., fantasy, sci-fi, portrait, landscape)")
         self.genre_edit.setReadOnly(True)
         genre_layout.addWidget(self.genre_edit)
         genre_group.setLayout(genre_layout)
@@ -1378,8 +1603,10 @@ class AnalysisTab(QWidget):
         
         # Technical section
         technical_group = CollapsibleGroupBox("Technical Details")
+        technical_group.setToolTip("Technical aspects like composition, lighting, and technique")
         technical_layout = QVBoxLayout()
         self.technical_edit = TextEditWithCounter(placeholder="Technical details")
+        self.technical_edit.setToolTip("Describe technical details like composition, lighting, color palette, and techniques used")
         self.technical_edit.setMaximumHeight(100)
         self.technical_edit.setReadOnly(True)
         technical_layout.addWidget(self.technical_edit)
@@ -1388,63 +1615,68 @@ class AnalysisTab(QWidget):
         
         # Buttons
         button_layout = QHBoxLayout()
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
         self.edit_btn = QPushButton("✏️ Edit")
-        self.edit_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
+        self.edit_btn.setToolTip("Toggle edit mode to manually enter or modify analysis data")
+        self.edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['warning']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #e68900;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['warning_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.edit_btn.clicked.connect(self.toggle_edit_mode)
         self.edit_btn.setEnabled(False)
         
         self.analyze_btn = QPushButton("🔍 Analyze Image")
-        self.analyze_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #2196F3;
-                color: white;
+        self.analyze_btn.setToolTip("Analyze the selected image using AI to extract visual details")
+        self.analyze_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['primary']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #0b7dda;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['primary_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.analyze_btn.clicked.connect(self.analyze_image)
         self.save_btn = QPushButton("💾 Save Analysis")
-        self.save_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
+        self.save_btn.setToolTip("Save the current analysis data to the database")
+        self.save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.save_btn.clicked.connect(self.save_analysis)
         self.save_btn.setEnabled(False)
@@ -1467,6 +1699,61 @@ class AnalysisTab(QWidget):
         self.edit_btn.setEnabled(True)
         self.load_analysis()
         self.save_btn.setEnabled(True)
+        self.load_image_preview(image_id)
+    
+    def load_image_preview(self, image_id):
+        """Load and display image preview."""
+        self.set_loading(True, "Loading image preview...")
+        worker = APIWorker(f"http://localhost:8000/api/v1/images/{image_id}")
+        worker.finished.connect(self.on_image_preview_loaded)
+        worker.error.connect(self.on_image_preview_error)
+        worker.progress.connect(self.on_progress)
+        self.workers.append(worker)
+        worker.start()
+    
+    def on_image_preview_loaded(self, data):
+        """Handle loaded image preview."""
+        self.set_loading(False)
+        # Get image path from API response
+        thumbnail_path = data.get('thumbnail_path') or data.get('original_path')
+        if thumbnail_path and thumbnail_path != "null":
+            # Convert file path to HTTP URL
+            http_path = thumbnail_path.replace("\\", "/")
+            image_url = f"http://localhost:8000/{http_path}"
+            
+            # Use QNetworkAccessManager to fetch image
+            manager = QNetworkAccessManager()
+            self.network_managers.append(manager)  # Keep reference to prevent garbage collection
+            request = QNetworkRequest(QUrl(image_url))
+            
+            def on_reply_finished(reply):
+                if reply.error() == QNetworkReply.NetworkError.NoError:
+                    image_data = reply.readAll()
+                    pixmap = QPixmap()
+                    if pixmap.loadFromData(image_data):
+                        # Scale to fit the available space while maintaining aspect ratio
+                        label_size = self.image_preview_label.size()
+                        scaled_pixmap = pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        self.image_preview_label.setPixmap(scaled_pixmap)
+                        self.image_preview_label.setText("")
+                    else:
+                        self.image_preview_label.setText("Failed to load image")
+                else:
+                    self.image_preview_label.setText("Failed to load image")
+                reply.deleteLater()
+                # Remove manager from list after request completes
+                if manager in self.network_managers:
+                    self.network_managers.remove(manager)
+            
+            manager.finished.connect(on_reply_finished)
+            manager.get(request)
+        else:
+            self.image_preview_label.setText("No image path")
+    
+    def on_image_preview_error(self, error_msg):
+        """Handle image preview load error."""
+        self.set_loading(False)
+        self.image_preview_label.setText("Failed to load preview")
     
     def load_analysis(self):
         """Load analysis for current image."""
@@ -1546,6 +1833,13 @@ class AnalysisTab(QWidget):
             return
         
         self.set_loading(True, "Analyzing image with AI...")
+        
+        # Configure streaming URL for the progress overlay (GET with query param)
+        streaming_url = f"http://localhost:8000/api/v1/analysis/analyze/stream?image_id={self.current_image_id}"
+        self.progress_overlay.set_streaming_url(streaming_url)
+        self.progress_overlay.start_streaming_worker()
+        
+        # Also call the non-streaming endpoint for the final result
         worker = APIWorker(
             "http://localhost:8000/api/v1/analysis/analyze",
             method="POST",
@@ -1634,77 +1928,83 @@ class AnalysisTab(QWidget):
         self.technical_edit.setReadOnly(not editable)
         
         # Update button text and styling
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
         if editable:
             self.edit_btn.setText("✖️ Cancel Edit")
-            self.edit_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #9E9E9E;
-                    color: white;
+            self.edit_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {colors['border']};
+                    color: {colors['text_primary']};
                     border: none;
                     padding: 10px;
                     font-size: 12px;
                     border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #757575;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {colors['text_secondary']};
+                }}
             """)
             # Update field backgrounds for edit mode
             for widget in [self.title_edit, self.art_style_edit, self.mood_edit, self.genre_edit]:
-                widget.setStyleSheet("""
-                    QLineEdit {
+                widget.setStyleSheet(f"""
+                    QLineEdit {{
                         padding: 8px;
-                        border: 1px solid #2196F3;
+                        border: 1px solid {colors['input_focus']};
                         border-radius: 4px;
-                        background-color: white;
-                    }
+                        background-color: {colors['input_bg']};
+                    }}
                 """)
             for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-                widget.text_edit.setStyleSheet("""
-                    QTextEdit {
+                widget.text_edit.setStyleSheet(f"""
+                    QTextEdit {{
                         padding: 8px;
-                        border: 1px solid #2196F3;
+                        border: 1px solid {colors['input_focus']};
                         border-radius: 4px;
-                        background-color: white;
-                    }
+                        background-color: {colors['input_bg']};
+                    }}
                 """)
         else:
             self.edit_btn.setText("✏️ Edit")
-            self.edit_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #FF9800;
-                    color: white;
+            self.edit_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {colors['warning']};
+                    color: {text_color};
                     border: none;
-                    padding: 10px;
-                    font-size: 12px;
-                    border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #e68900;
-                }
+                    padding: 12px;
+                    font-size: 13px;
+                    border-radius: 8px;
+                    font-weight: 500;
+                }}
+                QPushButton:hover {{
+                    background-color: {colors['warning_hover']};
+                }}
+                QPushButton:disabled {{
+                    background-color: {colors['border']};
+                }}
             """)
             # Update field backgrounds for read-only mode
             for widget in [self.title_edit, self.art_style_edit, self.mood_edit, self.genre_edit]:
-                widget.setStyleSheet("""
-                    QLineEdit {
+                widget.setStyleSheet(f"""
+                    QLineEdit {{
                         padding: 8px;
-                        border: 1px solid #ddd;
+                        border: 1px solid {colors['border']};
                         border-radius: 4px;
-                        background-color: #f5f5f5;
-                    }
-                    QLineEdit[readOnly="true"] {
-                        background-color: #e8e8e8;
-                        color: #666;
-                    }
+                        background-color: {colors['surface']};
+                    }}
+                    QLineEdit[readOnly="true"] {{
+                        background-color: {colors['surface']};
+                        color: {colors['text_secondary']};
+                    }}
                 """)
             for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-                widget.text_edit.setStyleSheet("""
-                    QTextEdit {
+                widget.text_edit.setStyleSheet(f"""
+                    QTextEdit {{
                         padding: 8px;
-                        border: 1px solid #ddd;
+                        border: 1px solid {colors['border']};
                         border-radius: 4px;
-                        background-color: #f5f5f5;
-                    }
+                        background-color: {colors['surface']};
+                    }}
                 """)
     
     def on_error(self, error_msg):
@@ -1759,6 +2059,7 @@ class ContentTab(QWidget):
         self.current_image_id = None
         self.content_edits = {}  # Store text edits for each platform
         self.workers = []  # Track workers for cleanup
+        self.network_managers = []  # Track network managers for cleanup
         self.progress_overlay = ProgressOverlay(parent=self)
         self.init_ui()
     
@@ -1789,6 +2090,23 @@ class ContentTab(QWidget):
         self.instruction_label = QLabel("Select an image from the Upload tab to generate content")
         layout.addWidget(self.instruction_label)
         
+        # Image preview box
+        self.image_preview_label = QLabel()
+        self.image_preview_label.setMinimumSize(200, 200)
+        self.image_preview_label.setMaximumSize(400, 400)
+        self.image_preview_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.image_preview_label.setToolTip("Preview of the currently selected image for content generation")
+        colors = theme_manager.get_theme_colors()
+        self.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                border: 2px solid {colors['border']};
+                border-radius: 8px;
+                background-color: {colors['surface']};
+            }}
+        """)
+        self.image_preview_label.setText("No image selected")
+        layout.addWidget(self.image_preview_label, 0, Qt.AlignmentFlag.AlignCenter)
+        
         # Status and progress
         self.status_label = QLabel("Ready")
         layout.addWidget(self.status_label)
@@ -1800,6 +2118,48 @@ class ContentTab(QWidget):
         
         # Platform tabs
         self.platform_tabs = QTabWidget()
+        self.platform_tabs.setToolTip("Select a platform to view or generate content for that specific platform")
+        colors = theme_manager.get_theme_colors()
+        
+        # Style the tab widget for better visibility in dark/retro modes
+        if theme_manager.current_theme == "retro":
+            # Use green for retro mode to match the theme
+            selected_color = colors['success']  # Green
+            selected_border = colors['success']
+        elif theme_manager.current_theme == "dark":
+            selected_color = colors['primary']  # Blue
+            selected_border = colors['primary']
+        else:
+            selected_color = colors['primary']  # Blue
+            selected_border = colors['primary']
+        
+        self.platform_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {colors['border']};
+                background-color: {colors['surface']};
+                border-radius: 8px;
+            }}
+            QTabBar::tab {{
+                background-color: {colors['surface']};
+                color: {colors['text_secondary']};
+                padding: 10px 20px;
+                border: 1px solid {colors['border']};
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {selected_color};
+                color: white;
+                border: 2px solid {selected_border};
+                border-bottom: 2px solid {selected_border};
+                font-weight: bold;
+            }}
+            QTabBar::tab:hover:!selected {{
+                background-color: {colors['border']};
+            }}
+        """)
         
         # Create tabs for each platform with specific fields
         self.content_edits = {}  # Will store dicts of fields per platform
@@ -1809,8 +2169,10 @@ class ContentTab(QWidget):
         twitter_layout = QVBoxLayout()
         
         twitter_short_group = CollapsibleGroupBox("Short Version")
+        twitter_short_group.setToolTip("A concise tweet for quick engagement")
         twitter_short_layout = QVBoxLayout()
         twitter_short = TextEditWithCounterAndCopy(max_chars=280, placeholder="Short tweet (under 280 chars)")
+        twitter_short.setToolTip("Write a short, punchy tweet (max 280 characters)")
         twitter_short.setReadOnly(True)
         twitter_short.setMaximumHeight(100)
         twitter_short_layout.addWidget(twitter_short)
@@ -1818,8 +2180,10 @@ class ContentTab(QWidget):
         twitter_layout.addWidget(twitter_short_group)
         
         twitter_medium_group = CollapsibleGroupBox("Medium Version")
+        twitter_medium_group.setToolTip("A more detailed tweet with additional context")
         twitter_medium_layout = QVBoxLayout()
         twitter_medium = TextEditWithCounterAndCopy(max_chars=280, placeholder="Medium-length tweet")
+        twitter_medium.setToolTip("Write a medium-length tweet with more detail (max 280 characters)")
         twitter_medium.setReadOnly(True)
         twitter_medium.setMaximumHeight(120)
         twitter_medium_layout.addWidget(twitter_medium)
@@ -1827,8 +2191,10 @@ class ContentTab(QWidget):
         twitter_layout.addWidget(twitter_medium_group)
         
         twitter_engagement_group = CollapsibleGroupBox("Engagement Version")
+        twitter_engagement_group.setToolTip("An engagement-focused tweet with hashtags and call-to-action")
         twitter_engagement_layout = QVBoxLayout()
         twitter_engagement = TextEditWithCounterAndCopy(max_chars=280, placeholder="Engagement-focused tweet with hashtags")
+        twitter_engagement.setToolTip("Write an engaging tweet with hashtags and a call-to-action (max 280 characters)")
         twitter_engagement.setReadOnly(True)
         twitter_engagement_layout.addWidget(twitter_engagement)
         twitter_engagement_group.setLayout(twitter_engagement_layout)
@@ -1847,16 +2213,20 @@ class ContentTab(QWidget):
         instagram_layout = QVBoxLayout()
         
         instagram_caption_group = CollapsibleGroupBox("Caption")
+        instagram_caption_group.setToolTip("The main caption for the Instagram post")
         instagram_caption_layout = QVBoxLayout()
         instagram_caption = TextEditWithCounterAndCopy(placeholder="Instagram caption")
+        instagram_caption.setToolTip("Write a descriptive caption for your Instagram post")
         instagram_caption.setReadOnly(True)
         instagram_caption_layout.addWidget(instagram_caption)
         instagram_caption_group.setLayout(instagram_caption_layout)
         instagram_layout.addWidget(instagram_caption_group)
         
         instagram_hashtags_group = CollapsibleGroupBox("Hashtags")
+        instagram_hashtags_group.setToolTip("Relevant hashtags for discoverability")
         instagram_hashtags_layout = QVBoxLayout()
         instagram_hashtags = TextEditWithCounterAndCopy(placeholder="Hashtags (comma-separated)")
+        instagram_hashtags.setToolTip("Add relevant hashtags separated by commas")
         instagram_hashtags.setReadOnly(True)
         instagram_hashtags.setMaximumHeight(100)
         instagram_hashtags_layout.addWidget(instagram_hashtags)
@@ -1875,8 +2245,10 @@ class ContentTab(QWidget):
         reddit_layout = QVBoxLayout()
         
         reddit_title_group = CollapsibleGroupBox("Title")
+        reddit_title_group.setToolTip("The title for your Reddit post")
         reddit_title_layout = QVBoxLayout()
         reddit_title = TextEditWithCounterAndCopy(max_chars=300, placeholder="Post title")
+        reddit_title.setToolTip("Write a catchy title for your Reddit post (max 300 characters)")
         reddit_title.setReadOnly(True)
         reddit_title.setMaximumHeight(80)
         reddit_title_layout.addWidget(reddit_title)
@@ -1884,8 +2256,10 @@ class ContentTab(QWidget):
         reddit_layout.addWidget(reddit_title_group)
         
         reddit_body_group = CollapsibleGroupBox("Body")
+        reddit_body_group.setToolTip("The main content of your Reddit post")
         reddit_body_layout = QVBoxLayout()
         reddit_body = TextEditWithCounterAndCopy(placeholder="Post body content")
+        reddit_body.setToolTip("Write the main content for your Reddit post")
         reddit_body.setReadOnly(True)
         reddit_body_layout.addWidget(reddit_body)
         reddit_body_group.setLayout(reddit_body_layout)
@@ -1903,8 +2277,10 @@ class ContentTab(QWidget):
         artstation_layout = QVBoxLayout()
         
         artstation_title_group = CollapsibleGroupBox("Title")
+        artstation_title_group.setToolTip("The title for your ArtStation artwork")
         artstation_title_layout = QVBoxLayout()
         artstation_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
+        artstation_title.setToolTip("Enter the title for your ArtStation artwork")
         artstation_title.setReadOnly(True)
         artstation_title.setMaximumHeight(80)
         artstation_title_layout.addWidget(artstation_title)
@@ -1912,16 +2288,20 @@ class ContentTab(QWidget):
         artstation_layout.addWidget(artstation_title_group)
         
         artstation_description_group = CollapsibleGroupBox("Description")
+        artstation_description_group.setToolTip("Detailed description of your artwork")
         artstation_description_layout = QVBoxLayout()
         artstation_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
+        artstation_description.setToolTip("Write a detailed description of your artwork")
         artstation_description.setReadOnly(True)
         artstation_description_layout.addWidget(artstation_description)
         artstation_description_group.setLayout(artstation_description_layout)
         artstation_layout.addWidget(artstation_description_group)
         
         artstation_tags_group = CollapsibleGroupBox("Tags")
+        artstation_tags_group.setToolTip("SEO tags for discoverability")
         artstation_tags_layout = QVBoxLayout()
         artstation_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
+        artstation_tags.setToolTip("Add relevant tags for SEO and discoverability")
         artstation_tags.setReadOnly(True)
         artstation_tags.setMaximumHeight(100)
         artstation_tags_layout.addWidget(artstation_tags)
@@ -1941,8 +2321,10 @@ class ContentTab(QWidget):
         deviantart_layout = QVBoxLayout()
         
         deviantart_title_group = CollapsibleGroupBox("Title")
+        deviantart_title_group.setToolTip("The title for your DeviantArt artwork")
         deviantart_title_layout = QVBoxLayout()
         deviantart_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
+        deviantart_title.setToolTip("Enter the title for your DeviantArt artwork")
         deviantart_title.setReadOnly(True)
         deviantart_title.setMaximumHeight(80)
         deviantart_title_layout.addWidget(deviantart_title)
@@ -1950,16 +2332,20 @@ class ContentTab(QWidget):
         deviantart_layout.addWidget(deviantart_title_group)
         
         deviantart_description_group = CollapsibleGroupBox("Description")
+        deviantart_description_group.setToolTip("Detailed description of your artwork")
         deviantart_description_layout = QVBoxLayout()
         deviantart_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
+        deviantart_description.setToolTip("Write a detailed description of your artwork")
         deviantart_description.setReadOnly(True)
         deviantart_description_layout.addWidget(deviantart_description)
         deviantart_description_group.setLayout(deviantart_description_layout)
         deviantart_layout.addWidget(deviantart_description_group)
         
         deviantart_tags_group = CollapsibleGroupBox("Tags")
+        deviantart_tags_group.setToolTip("SEO tags for discoverability")
         deviantart_tags_layout = QVBoxLayout()
         deviantart_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
+        deviantart_tags.setToolTip("Add relevant tags for SEO and discoverability")
         deviantart_tags.setReadOnly(True)
         deviantart_tags.setMaximumHeight(100)
         deviantart_tags_layout.addWidget(deviantart_tags)
@@ -1975,64 +2361,69 @@ class ContentTab(QWidget):
         }
         
         # Apply consistent styling to all content fields
+        colors = theme_manager.get_theme_colors()
         for platform, fields in self.content_edits.items():
             for field_name, field_edit in fields.items():
-                field_edit.text_edit.setStyleSheet("""
-                    QTextEdit {
+                field_edit.text_edit.setStyleSheet(f"""
+                    QTextEdit {{
                         padding: 12px;
-                        border: 1px solid #e0e0e0;
+                        border: 1px solid {colors['input_border']};
                         border-radius: 8px;
-                        background-color: #f8f9fa;
+                        background-color: {colors['input_bg']};
                         font-size: 13px;
-                    }
-                    QTextEdit:focus {
-                        border: 2px solid #2196F3;
-                        background-color: white;
-                    }
+                    }}
+                    QTextEdit:focus {{
+                        border: 2px solid {colors['input_focus']};
+                        background-color: {colors['background']};
+                    }}
                 """)
         
         layout.addWidget(self.platform_tabs)
         
         # Buttons
         button_layout = QHBoxLayout()
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
         self.edit_content_btn = QPushButton("✏️ Edit Content")
-        self.edit_content_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #FF9800;
-                color: white;
+        self.edit_content_btn.setToolTip("Toggle edit mode to manually enter or modify generated content")
+        self.edit_content_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['warning']};
+                color: {text_color};
                 border: none;
                 padding: 12px;
                 font-size: 13px;
                 border-radius: 8px;
                 font-weight: 500;
-            }
-            QPushButton:hover {
-                background-color: #e68900;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['warning_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.edit_content_btn.clicked.connect(self.toggle_content_edit_mode)
         self.edit_content_btn.setEnabled(False)
         
         self.generate_btn = QPushButton("✨ Generate Content")
-        self.generate_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #9C27B0;
-                color: white;
+        self.generate_btn.setToolTip("Generate platform-specific content using AI based on the image analysis")
+        self.generate_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['purple']};
+                color: {text_color};
                 border: none;
                 padding: 14px;
                 font-size: 14px;
                 font-weight: bold;
                 border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #7b1fa2;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
+            }}
+            QPushButton:hover {{
+                background-color: {colors['purple_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
         """)
         self.generate_btn.clicked.connect(self.generate_content)
         self.generate_btn.setEnabled(False)
@@ -2054,6 +2445,61 @@ class ContentTab(QWidget):
         self.edit_content_btn.setEnabled(True)
         self.load_content()
         self.generate_btn.setEnabled(True)
+        self.load_image_preview(image_id)
+    
+    def load_image_preview(self, image_id):
+        """Load and display image preview."""
+        self.set_loading(True, "Loading image preview...")
+        worker = APIWorker(f"http://localhost:8000/api/v1/images/{image_id}")
+        worker.finished.connect(self.on_image_preview_loaded)
+        worker.error.connect(self.on_image_preview_error)
+        worker.progress.connect(self.on_progress)
+        self.workers.append(worker)
+        worker.start()
+    
+    def on_image_preview_loaded(self, data):
+        """Handle loaded image preview."""
+        self.set_loading(False)
+        # Get image path from API response
+        thumbnail_path = data.get('thumbnail_path') or data.get('original_path')
+        if thumbnail_path and thumbnail_path != "null":
+            # Convert file path to HTTP URL
+            http_path = thumbnail_path.replace("\\", "/")
+            image_url = f"http://localhost:8000/{http_path}"
+            
+            # Use QNetworkAccessManager to fetch image
+            manager = QNetworkAccessManager()
+            self.network_managers.append(manager)  # Keep reference to prevent garbage collection
+            request = QNetworkRequest(QUrl(image_url))
+            
+            def on_reply_finished(reply):
+                if reply.error() == QNetworkReply.NetworkError.NoError:
+                    image_data = reply.readAll()
+                    pixmap = QPixmap()
+                    if pixmap.loadFromData(image_data):
+                        # Scale to fit the available space while maintaining aspect ratio
+                        label_size = self.image_preview_label.size()
+                        scaled_pixmap = pixmap.scaled(label_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                        self.image_preview_label.setPixmap(scaled_pixmap)
+                        self.image_preview_label.setText("")
+                    else:
+                        self.image_preview_label.setText("Failed to load image")
+                else:
+                    self.image_preview_label.setText("Failed to load image")
+                reply.deleteLater()
+                # Remove manager from list after request completes
+                if manager in self.network_managers:
+                    self.network_managers.remove(manager)
+            
+            manager.finished.connect(on_reply_finished)
+            manager.get(request)
+        else:
+            self.image_preview_label.setText("No image path")
+    
+    def on_image_preview_error(self, error_msg):
+        """Handle image preview load error."""
+        self.set_loading(False)
+        self.image_preview_label.setText("Failed to load preview")
     
     def load_content(self):
         """Load content for current image."""
@@ -2209,6 +2655,14 @@ class ContentTab(QWidget):
             return
         
         self.set_loading(True, "Generating content with AI...")
+        
+        # Configure streaming URL for the progress overlay (GET with query params)
+        platforms = "Instagram,Twitter,X,Facebook,TikTok,LinkedIn,Reddit,YouTube,Blog,Email"
+        streaming_url = f"http://localhost:8000/api/v1/content/generate/stream?image_id={self.current_image_id}&platforms={platforms}"
+        self.progress_overlay.set_streaming_url(streaming_url)
+        self.progress_overlay.start_streaming_worker()
+        
+        # Also call the non-streaming endpoint for the final result
         worker = APIWorker(
             "http://localhost:8000/api/v1/content/generate",
             method="POST",
@@ -2284,60 +2738,295 @@ class ContentTab(QWidget):
                 field_edit.setReadOnly(not editable)
         
         # Update button text and styling
+        colors = theme_manager.get_theme_colors()
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
         if editable:
             self.edit_content_btn.setText("✖️ Cancel Edit")
-            self.edit_content_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #9E9E9E;
-                    color: white;
+            self.edit_content_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {colors['border']};
+                    color: {colors['text_primary']};
                     border: none;
                     padding: 10px;
                     font-size: 12px;
                     border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #757575;
-                }
+                }}
+                QPushButton:hover {{
+                    background-color: {colors['text_secondary']};
+                }}
             """)
             # Update field backgrounds for edit mode
             for platform, fields in self.content_edits.items():
                 for field_name, field_edit in fields.items():
-                    field_edit.text_edit.setStyleSheet("""
-                        QTextEdit {
+                    field_edit.text_edit.setStyleSheet(f"""
+                        QTextEdit {{
                             padding: 12px;
-                            border: 1px solid #9C27B0;
+                            border: 1px solid {colors['purple']};
                             border-radius: 4px;
-                            background-color: white;
+                            background-color: {colors['input_bg']};
                             font-size: 11px;
-                        }
+                        }}
                     """)
         else:
             self.edit_content_btn.setText("✏️ Edit Content")
-            self.edit_content_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #FF9800;
-                    color: white;
+            self.edit_content_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {colors['warning']};
+                    color: {text_color};
                     border: none;
-                    padding: 10px;
-                    font-size: 12px;
-                    border-radius: 5px;
-                }
-                QPushButton:hover {
-                    background-color: #e68900;
-                }
+                    padding: 12px;
+                    font-size: 13px;
+                    border-radius: 8px;
+                    font-weight: 500;
+                }}
+                QPushButton:hover {{
+                    background-color: {colors['warning_hover']};
+                }}
+                QPushButton:disabled {{
+                    background-color: {colors['border']};
+                }}
             """)
             # Update field backgrounds for read-only mode
             for platform, fields in self.content_edits.items():
                 for field_name, field_edit in fields.items():
-                    field_edit.text_edit.setStyleSheet("""
-                        QTextEdit {
+                    field_edit.text_edit.setStyleSheet(f"""
+                        QTextEdit {{
                             padding: 12px;
-                            border: 1px solid #ddd;
+                            border: 1px solid {colors['border']};
                             border-radius: 4px;
-                            background-color: #f5f5f5;
+                            background-color: {colors['surface']};
                             font-size: 11px;
-                        }
+                        }}
                     """)
+
+
+class LogsTab(QWidget):
+    """Tab for viewing application logs from Ollama, Backend, and GUI."""
+    
+    def __init__(self, main_window=None):
+        super().__init__()
+        self.main_window = main_window
+        self.log_files = {
+            "Ollama": Path(__file__).parent.parent / "ollama.log",
+            "Backend": Path(__file__).parent.parent / "backend.log",
+            "GUI": Path(__file__).parent.parent / "gui.log"
+        }
+        self.log_watchers = {}  # Store file watchers
+        self.ollama_host = "http://localhost:11434"
+        self.init_ui()
+        self.start_log_watching()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        # Title
+        title = QLabel("Application Logs")
+        title.setFont(QFont("Arial", 14, QFont.Weight.Bold))
+        main_layout.addWidget(title)
+        
+        # Filter controls
+        filter_layout = QHBoxLayout()
+        
+        # Source filter
+        filter_layout.addWidget(QLabel("Source:"))
+        self.source_filter = QComboBox()
+        self.source_filter.addItems(["All", "Ollama", "Backend", "GUI"])
+        self.source_filter.currentTextChanged.connect(self.apply_filters)
+        filter_layout.addWidget(self.source_filter)
+        
+        filter_layout.addSpacing(20)
+        
+        # Level filter
+        filter_layout.addWidget(QLabel("Level:"))
+        self.level_filter = QComboBox()
+        self.level_filter.addItems(["All", "INFO", "WARNING", "ERROR"])
+        self.level_filter.currentTextChanged.connect(self.apply_filters)
+        filter_layout.addWidget(self.level_filter)
+        
+        filter_layout.addStretch()
+        
+        # Auto-scroll checkbox
+        self.auto_scroll = QCheckBox("Auto-scroll")
+        self.auto_scroll.setChecked(True)
+        filter_layout.addWidget(self.auto_scroll)
+        
+        # Clear button
+        self.clear_btn = QPushButton("Clear")
+        self.clear_btn.clicked.connect(self.clear_logs)
+        filter_layout.addWidget(self.clear_btn)
+        
+        # Refresh button
+        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn.clicked.connect(self.refresh_logs)
+        filter_layout.addWidget(self.refresh_btn)
+        
+        main_layout.addLayout(filter_layout)
+        
+        # Log display
+        self.log_display = QTextEdit()
+        self.log_display.setReadOnly(True)
+        self.log_display.setFont(QFont("Consolas", 9))
+        colors = theme_manager.get_theme_colors()
+        self.log_display.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {colors['surface']};
+                color: {colors['text_primary']};
+                border: 1px solid {colors['border']};
+                border-radius: 8px;
+                padding: 10px;
+            }}
+        """)
+        main_layout.addWidget(self.log_display)
+        
+        # Status bar
+        self.status_label = QLabel("Monitoring log files...")
+        main_layout.addWidget(self.status_label)
+        
+        self.setLayout(main_layout)
+        
+        # Load initial logs
+        self.refresh_logs()
+    
+    def start_log_watching(self):
+        """Start watching log files for changes."""
+        # For now, we'll use a timer to periodically check for updates
+        # In a more sophisticated implementation, we could use QFileSystemWatcher
+        self.log_timer = QTimer()
+        self.log_timer.timeout.connect(self.refresh_logs)
+        self.log_timer.start(2000)  # Check every 2 seconds
+    
+    def get_ollama_status(self):
+        """Fetch Ollama status from the API."""
+        try:
+            import requests
+            response = requests.get(f"{self.ollama_host}/api/tags", timeout=2)
+            if response.status_code == 200:
+                data = response.json()
+                models = data.get("models", [])
+                if models:
+                    model_names = [m.get("name") for m in models]
+                    return f"Ollama is running. Available models: {', '.join(model_names)}"
+                else:
+                    return "Ollama is running but no models found"
+            else:
+                return f"Ollama API returned status: {response.status_code}"
+        except Exception as e:
+            return f"Failed to connect to Ollama API: {e}"
+    
+    def refresh_logs(self):
+        """Refresh logs from all log files."""
+        all_logs = []
+        
+        for source, log_file in self.log_files.items():
+            if log_file.exists():
+                try:
+                    with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
+                        logs = f.readlines()
+                        for log in logs:
+                            all_logs.append((source, log.strip()))
+                except Exception as e:
+                    all_logs.append((source, f"ERROR: Failed to read log file: {e}"))
+            else:
+                if source == "Ollama":
+                    all_logs.append((source, "INFO: No log file found (Ollama may be running externally)"))
+                else:
+                    all_logs.append((source, "INFO: No log file found"))
+        
+        self.all_logs = all_logs
+        self.apply_filters()
+    
+    def apply_filters(self):
+        """Apply source and level filters to logs."""
+        source_filter = self.source_filter.currentText()
+        level_filter = self.level_filter.currentText()
+        
+        filtered_logs = []
+        for source, log in self.all_logs:
+            # Apply source filter
+            if source_filter != "All" and source != source_filter:
+                continue
+            
+            # Apply level filter
+            if level_filter != "All":
+                log_upper = log.upper()
+                if level_filter == "INFO" and not ("INFO" in log_upper or log_upper.startswith("[") or not any(l in log_upper for l in ["WARNING", "ERROR"])):
+                    pass  # Include non-labeled logs as INFO
+                elif level_filter == "WARNING" and "WARNING" not in log_upper:
+                    continue
+                elif level_filter == "ERROR" and "ERROR" not in log_upper:
+                    continue
+            
+            filtered_logs.append((source, log))
+        
+        # Display filtered logs
+        self.display_logs(filtered_logs)
+    
+    def display_logs(self, logs):
+        """Display logs in the text widget."""
+        colors = theme_manager.get_theme_colors()
+        
+        html = ""
+        for source, log in logs:
+            # Color code by source
+            if source == "Ollama":
+                color = colors['primary']  # Blue
+            elif source == "Backend":
+                color = colors['success']  # Green
+            else:  # GUI
+                color = colors['warning']  # Orange
+            
+            # Color code by level
+            log_upper = log.upper()
+            if "ERROR" in log_upper:
+                text_color = colors['danger']  # Red
+            elif "WARNING" in log_upper:
+                text_color = colors['warning']  # Orange
+            else:
+                text_color = colors['text_primary']
+            
+            # Escape HTML special characters
+            log_escaped = log.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            
+            html += f'<span style="color: {color}; font-weight: bold;">[{source}]</span> '
+            html += f'<span style="color: {text_color};">{log_escaped}</span><br>'
+        
+        cursor = self.log_display.textCursor()
+        
+        # Store current scroll position if auto-scroll is disabled
+        if not self.auto_scroll.isChecked():
+            scroll_bar = self.log_display.verticalScrollBar()
+            scroll_pos = scroll_bar.value()
+            was_at_bottom = scroll_bar.value() == scroll_bar.maximum()
+        
+        self.log_display.setHtml(html)
+        
+        # Restore scroll position or auto-scroll
+        if self.auto_scroll.isChecked():
+            cursor.movePosition(cursor.MoveOperation.End)
+            self.log_display.setTextCursor(cursor)
+        else:
+            scroll_bar = self.log_display.verticalScrollBar()
+            if was_at_bottom:
+                scroll_bar.setValue(scroll_bar.maximum())
+            else:
+                scroll_bar.setValue(scroll_pos)
+        
+        # Update status
+        self.status_label.setText(f"Showing {len(logs)} log entries")
+    
+    def clear_logs(self):
+        """Clear the log display."""
+        self.log_display.clear()
+        self.status_label.setText("Logs cleared")
+    
+    def closeEvent(self, event):
+        """Handle close event."""
+        if hasattr(self, 'log_timer'):
+            self.log_timer.stop()
+        event.accept()
 
 
 class MainWindow(QMainWindow):
@@ -2361,21 +3050,22 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         
         # Create header with theme toggle
-        header = QWidget()
-        header.setStyleSheet(f"""
+        colors = theme_manager.get_theme_colors()
+        self.header = QWidget()
+        self.header.setStyleSheet(f"""
             QWidget {{
-                background-color: {theme_manager.get_color('surface')};
-                border-bottom: 1px solid {theme_manager.get_color('border')};
+                background-color: {colors['surface']};
+                border-bottom: 1px solid {colors['border']};
                 padding: 8px;
             }}
         """)
         header_layout = QHBoxLayout()
         header_layout.setContentsMargins(15, 10, 15, 10)
         
-        title_label = QLabel("ArtForge Publisher")
-        title_label.setFont(QFont(theme_manager.FONT_FAMILY, 16, QFont.Weight.Bold))
-        title_label.setStyleSheet(f"color: {theme_manager.get_color('text_primary')};")
-        header_layout.addWidget(title_label)
+        self.title_label = QLabel("ArtForge Publisher")
+        self.title_label.setFont(QFont(theme_manager.FONT_FAMILY, 16, QFont.Weight.Bold))
+        self.title_label.setStyleSheet(f"color: {colors['text_primary']};")
+        header_layout.addWidget(self.title_label)
         
         header_layout.addStretch()
         
@@ -2385,21 +3075,21 @@ class MainWindow(QMainWindow):
         self.theme_btn.setFixedSize(40, 40)
         self.theme_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {theme_manager.get_color('surface')};
-                border: 1px solid {theme_manager.get_color('border')};
+                background-color: {colors['surface']};
+                border: 1px solid {colors['border']};
                 border-radius: 8px;
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {theme_manager.get_color('primary')};
+                background-color: {colors['primary']};
                 color: white;
             }}
         """)
         self.theme_btn.clicked.connect(self.toggle_theme)
         header_layout.addWidget(self.theme_btn)
         
-        header.setLayout(header_layout)
-        main_layout.addWidget(header)
+        self.header.setLayout(header_layout)
+        main_layout.addWidget(self.header)
         
         # Create tab widget
         self.tabs = QTabWidget()
@@ -2408,6 +3098,7 @@ class MainWindow(QMainWindow):
         self.upload_tab = ImageUploadTab(self)
         self.analysis_tab = AnalysisTab(self)
         self.content_tab = ContentTab(self)
+        self.logs_tab = LogsTab(self)
         
         # Connect image selection signal to clear forms
         self.upload_tab.image_selected.connect(self.on_image_selected)
@@ -2416,6 +3107,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.upload_tab, "Upload")
         self.tabs.addTab(self.analysis_tab, "Analysis")
         self.tabs.addTab(self.content_tab, "Content")
+        self.tabs.addTab(self.logs_tab, "Logs")
         
         # Connect tab change to update current image
         self.tabs.currentChanged.connect(self.on_tab_changed)
@@ -2436,32 +3128,245 @@ class MainWindow(QMainWindow):
             widget.apply_theme_style()
         
         # Update header styling
-        header = self.findChild(QWidget)
-        if header:
-            header.setStyleSheet(f"""
-                QWidget {{
-                    background-color: {theme_manager.get_color('surface')};
-                    border-bottom: 1px solid {theme_manager.get_color('border')};
-                    padding: 8px;
-                }}
-            """)
+        colors = theme_manager.get_theme_colors()
+        self.header.setStyleSheet(f"""
+            QWidget {{
+                background-color: {colors['surface']};
+                border-bottom: 1px solid {colors['border']};
+                padding: 8px;
+            }}
+        """)
         
         # Update title label color
-        title_label = self.findChild(QLabel)
-        if title_label:
-            title_label.setStyleSheet(f"color: {theme_manager.get_color('text_primary')}; font-weight: bold; font-size: 16px;")
+        self.title_label.setStyleSheet(f"color: {colors['text_primary']}; font-weight: bold; font-size: 16px;")
         
         # Update theme button styling
+        colors = theme_manager.get_theme_colors()
         self.theme_btn.setStyleSheet(f"""
             QPushButton {{
-                background-color: {theme_manager.get_color('surface')};
-                border: 1px solid {theme_manager.get_color('border')};
+                background-color: {colors['surface']};
+                border: 1px solid {colors['border']};
                 border-radius: 8px;
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {theme_manager.get_color('primary')};
+                background-color: {colors['primary']};
                 color: white;
+            }}
+        """)
+        
+        # Update drop zone styling
+        self.upload_tab.reset_drop_zone_style()
+        
+        # Update status label styling
+        colors = theme_manager.get_theme_colors()
+        self.upload_tab.status_label.setStyleSheet(f"color: {colors['text_secondary']}; font-size: 11px;")
+        
+        # Update button styling in all tabs
+        self.update_tab_button_styles()
+    
+    def update_tab_button_styles(self):
+        """Update button styles when theme changes."""
+        colors = theme_manager.get_theme_colors()
+        
+        # Determine text color based on theme - use black for retro and light, white for dark
+        text_color = "black" if theme_manager.current_theme in ["retro", "light"] else "white"
+        
+        # Update AnalysisTab buttons
+        self.analysis_tab.edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['warning']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['warning_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        self.analysis_tab.analyze_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['primary']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['primary_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        self.analysis_tab.save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        
+        # Update ContentTab buttons
+        self.content_tab.edit_content_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['warning']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['warning_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        self.content_tab.generate_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['purple']};
+                color: {text_color};
+                border: none;
+                padding: 14px;
+                font-size: 14px;
+                font-weight: bold;
+                border-radius: 8px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['purple_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        
+        # Update ImageUploadTab buttons
+        self.upload_tab.upload_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['success']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['success_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        self.upload_tab.delete_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {colors['danger']};
+                color: {text_color};
+                border: none;
+                padding: 12px;
+                font-size: 13px;
+                border-radius: 8px;
+                font-weight: 500;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['danger_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['border']};
+            }}
+        """)
+        
+        # Update content field styling
+        for platform, fields in self.content_tab.content_edits.items():
+            for field_name, field_edit in fields.items():
+                field_edit.text_edit.setStyleSheet(f"""
+                    QTextEdit {{
+                        padding: 12px;
+                        border: 1px solid {colors['input_border']};
+                        border-radius: 8px;
+                        background-color: {colors['input_bg']};
+                        font-size: 13px;
+                    }}
+                    QTextEdit:focus {{
+                        border: 2px solid {colors['input_focus']};
+                        background-color: {colors['background']};
+                    }}
+                """)
+        
+        # Update image preview styling
+        self.analysis_tab.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                border: 2px solid {colors['border']};
+                border-radius: 8px;
+                background-color: {colors['surface']};
+            }}
+        """)
+        self.content_tab.image_preview_label.setStyleSheet(f"""
+            QLabel {{
+                border: 2px solid {colors['border']};
+                border-radius: 8px;
+                background-color: {colors['surface']};
+            }}
+        """)
+        
+        # Update platform tabs styling
+        if theme_manager.current_theme == "retro":
+            # Use green for retro mode to match the theme
+            selected_color = colors['success']  # Green
+            selected_border = colors['success']
+        elif theme_manager.current_theme == "dark":
+            selected_color = colors['primary']  # Blue
+            selected_border = colors['primary']
+        else:
+            selected_color = colors['primary']  # Blue
+            selected_border = colors['primary']
+        
+        self.content_tab.platform_tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: 1px solid {colors['border']};
+                background-color: {colors['surface']};
+                border-radius: 8px;
+            }}
+            QTabBar::tab {{
+                background-color: {colors['surface']};
+                color: {colors['text_secondary']};
+                padding: 10px 20px;
+                border: 1px solid {colors['border']};
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 2px;
+            }}
+            QTabBar::tab:selected {{
+                background-color: {selected_color};
+                color: white;
+                border: 2px solid {selected_border};
+                border-bottom: 2px solid {selected_border};
+                font-weight: bold;
+            }}
+            QTabBar::tab:hover:!selected {{
+                background-color: {colors['border']};
             }}
         """)
     

@@ -1,6 +1,8 @@
 """API routes for content generation and management."""
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 
 from app.api.schemas import (
     AllContentResponse,
@@ -59,6 +61,78 @@ async def generate_content(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate content"
         )
+
+
+@router.get("/generate/stream")
+async def generate_content_stream(
+    image_id: str,
+    platforms: str = None,  # Comma-separated list of platforms
+    content_repo = Depends(get_content_repository),
+    image_repo = Depends(get_image_repository),
+    prompt_repo = Depends(get_prompt_repository)
+):
+    """Generate platform-specific content with streaming response.
+    
+    Args:
+        image_id: Image ID
+        platforms: Comma-separated list of platforms
+        content_repo: Content repository
+        image_repo: Image repository
+        prompt_repo: Prompt repository
+        
+    Returns:
+        Streaming response with NDJSON chunks
+    """
+    async def event_generator():
+        try:
+            # Get image
+            image = image_repo.get(image_id)
+            if not image:
+                yield f"data: {json.dumps({'error': 'Image not found'})}\n\n"
+                return
+            
+            # Parse platforms from query parameter
+            from app.models import Platform
+            platform_list = []
+            if platforms:
+                for platform_str in platforms.split(','):
+                    try:
+                        platform_list.append(Platform(platform_str.strip().capitalize()))
+                    except ValueError:
+                        continue
+            
+            if not platform_list:
+                yield f"data: {json.dumps({'error': 'No valid platforms specified'})}\n\n"
+                return
+            
+            # Stream content generation for each platform
+            prompt_service = PromptService(prompt_repo)
+            ollama_client = OllamaClient()
+            
+            for platform in platform_list:
+                try:
+                    # Get the prompt for this platform
+                    prompt = prompt_service.get_prompt_content(f"{platform.lower()}_content")
+                    if not prompt:
+                        yield f"data: {json.dumps({'error': f'Prompt not found for {platform}'})}\n\n"
+                        continue
+                    
+                    # Stream generation from Ollama
+                    yield f"data: {json.dumps({'platform': platform, 'status': 'Generating'})}\n\n"
+                    async for chunk in ollama_client.generate_content_stream(prompt):
+                        yield f"data: {json.dumps({'platform': platform, 'content': chunk})}\n\n"
+                
+                except Exception as e:
+                    yield f"data: {json.dumps({'error': str(e), 'platform': platform})}\n\n"
+            
+            # Send completion signal
+            yield f"data: {json.dumps({'done': True})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Streaming content generation error: {e}")
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+    
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 @router.get("/{image_id}", response_model=AllContentResponse)

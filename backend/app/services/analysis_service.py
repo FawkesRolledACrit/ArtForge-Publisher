@@ -67,8 +67,30 @@ class AnalysisService:
             prompt = self.prompt_service.get_prompt_content("vision_analysis")
             prompt_version = self.prompt_service._generate_version_hash(prompt)
             
+            # Use the correct image path from the database
+            image_path = image.original_path
+            logger.info(f"Image ID: {image_id}")
+            logger.info(f"Image original_path from database: {image_path}")
+            logger.info(f"Image file_name from database: {image.filename}")
+            
+            # Check if the file exists
+            import os
+            if not os.path.exists(image_path):
+                logger.error(f"Image file does not exist at path: {image_path}")
+                # Try the storage path as fallback
+                from app.core.config import settings
+                storage_path = settings.IMAGES_PATH / f"{image_id}.webp"
+                logger.info(f"Trying storage path: {storage_path}")
+                if storage_path.exists():
+                    image_path = str(storage_path)
+                    logger.info(f"Using storage path instead")
+                else:
+                    raise ValueError(f"Image file not found at either path")
+            
+            logger.info(f"Final image path for Ollama: {image_path}")
+            
             # Send to Ollama
-            response = await self.ollama_client.analyze_image(image.original_path, prompt)
+            response = await self.ollama_client.analyze_image(image_path, prompt)
             
             # Parse JSON response from Ollama
             try:
