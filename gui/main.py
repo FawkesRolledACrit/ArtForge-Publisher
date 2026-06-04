@@ -99,22 +99,24 @@ class ThemeManager:
         self.current_theme = "retro"  # Default to retro theme
         self.config_path = Path.home() / ".artforge_publisher" / "config.json"
         self.load_theme()
-        self.load_custom_font()
+        # Disable custom font loading temporarily - causes GUI crash
+        # self.load_custom_font()
     
     def load_custom_font(self):
         """Load the custom RetroByte font."""
-        font_path = Path("C:/Users/Fawke/Downloads/Fonts/RetroByte.ttf")
-        if font_path.exists():
-            try:
+        try:
+            font_path = Path("C:/Users/Fawke/Downloads/Fonts/RetroByte.ttf")
+            if font_path.exists():
                 font_id = QFontDatabase.addApplicationFont(str(font_path))
                 if font_id >= 0:
                     print(f"Successfully loaded RetroByte font from {font_path}")
                 else:
                     print(f"Failed to load RetroByte font from {font_path}")
-            except Exception as e:
-                print(f"Error loading RetroByte font: {e}")
-        else:
-            print(f"RetroByte font not found at {font_path}")
+            else:
+                print(f"RetroByte font not found at {font_path}")
+        except Exception as e:
+            print(f"Error loading RetroByte font: {e}")
+            # Continue without the font if loading fails
     
     def load_theme(self):
         """Load theme preference from config file."""
@@ -673,26 +675,29 @@ class SpinnerWidget(QWidget):
     
     def paintEvent(self, event):
         """Paint the spinner."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Get theme colors
-        primary_color = QColor(theme_manager.get_color('primary'))
-        
-        # Draw spinner arc
-        center_x = self.width() // 2
-        center_y = self.height() // 2
-        radius = min(center_x, center_y) - 4
-        
-        pen = QPen(primary_color, 3)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        
-        # Draw arc with current rotation
-        rect = QRect(center_x - radius, center_y - radius, radius * 2, radius * 2)
-        start_angle = self.angle * 16  # Qt uses 1/16th degrees
-        span_angle = 270 * 16  # Draw 270 degrees
-        painter.drawArc(rect, start_angle, span_angle)
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            
+            # Get theme colors
+            primary_color = QColor(theme_manager.get_color('primary'))
+            
+            # Draw spinner arc
+            center_x = self.width() // 2
+            center_y = self.height() // 2
+            radius = min(center_x, center_y) - 4
+            
+            pen = QPen(primary_color, 3)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            painter.setPen(pen)
+            
+            # Draw arc with current rotation
+            rect = QRect(center_x - radius, center_y - radius, radius * 2, radius * 2)
+            start_angle = self.angle * 16  # Qt uses 1/16th degrees
+            span_angle = 270 * 16  # Draw 270 degrees
+            painter.drawArc(rect, start_angle, span_angle)
+        except Exception as e:
+            print(f"SpinnerWidget paintEvent error: {e}")
 
 
 class SkeletonWidget(QWidget):
@@ -731,25 +736,28 @@ class SkeletonWidget(QWidget):
     
     def paintEvent(self, event):
         """Paint the skeleton."""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Get theme colors
-        bg_color = QColor(theme_manager.get_color('surface'))
-        shimmer_color = QColor(theme_manager.get_color('border'))
-        
-        # Draw background
-        painter.fillRect(self.rect(), bg_color)
-        
-        # Draw shimmer gradient
-        gradient = QLinearGradient(self.shimmer_offset - 100, 0, self.shimmer_offset + 100, 0)
-        gradient.setColorAt(0, bg_color)
-        gradient.setColorAt(0.5, shimmer_color)
-        gradient.setColorAt(1, bg_color)
-        
-        painter.setBrush(QBrush(gradient))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.drawRoundedRect(self.rect(), 4, 4)
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            
+            # Get theme colors
+            bg_color = QColor(theme_manager.get_color('surface'))
+            shimmer_color = QColor(theme_manager.get_color('border'))
+            
+            # Draw background
+            painter.fillRect(self.rect(), bg_color)
+            
+            # Draw shimmer gradient
+            gradient = QLinearGradient(self.shimmer_offset - 100, 0, self.shimmer_offset + 100, 0)
+            gradient.setColorAt(0, bg_color)
+            gradient.setColorAt(0.5, shimmer_color)
+            gradient.setColorAt(1, bg_color)
+            
+            painter.setBrush(QBrush(gradient))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawRoundedRect(self.rect(), 4, 4)
+        except Exception as e:
+            print(f"SkeletonWidget paintEvent error: {e}")
 
 
 class ProgressOverlay(QWidget):
@@ -781,7 +789,6 @@ class ProgressOverlay(QWidget):
         
         # Animated spinner
         self.spinner = SpinnerWidget(size=48)
-        self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
         container_layout.addWidget(self.spinner, 0, Qt.AlignmentFlag.AlignCenter)
         
         # Message
@@ -3246,31 +3253,37 @@ class MainWindow(QMainWindow):
 
 def main():
     """Main entry point."""
-    app = QApplication(sys.argv)
-    
-    # Set application style
-    app.setStyle("Fusion")
-    
-    # Set dark/light theme palette
-    palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(245, 245, 245))
-    palette.setColor(QPalette.ColorRole.WindowText, QColor(0, 0, 0))
-    palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(240, 240, 240))
-    palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
-    palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
-    palette.setColor(QPalette.ColorRole.Text, QColor(0, 0, 0))
-    palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
-    palette.setColor(QPalette.ColorRole.ButtonText, QColor(0, 0, 0))
-    palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
-    palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(76, 175, 80))
-    palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
-    app.setPalette(palette)
-    
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+    try:
+        app = QApplication(sys.argv)
+        
+        # Set application style
+        app.setStyle("Fusion")
+        
+        # Set dark/light theme palette
+        palette = QPalette()
+        palette.setColor(QPalette.ColorRole.Window, QColor(245, 245, 245))
+        palette.setColor(QPalette.ColorRole.WindowText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
+        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(240, 240, 240))
+        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 220))
+        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Text, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.Button, QColor(240, 240, 240))
+        palette.setColor(QPalette.ColorRole.ButtonText, QColor(0, 0, 0))
+        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
+        palette.setColor(QPalette.ColorRole.Link, QColor(0, 0, 255))
+        palette.setColor(QPalette.ColorRole.Highlight, QColor(76, 175, 80))
+        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+        app.setPalette(palette)
+        
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec())
+    except Exception as e:
+        print(f"Error starting GUI: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
