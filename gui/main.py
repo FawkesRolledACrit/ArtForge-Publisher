@@ -310,6 +310,15 @@ class ThemeManager:
                 transition: all 0.2s ease-in-out;
             }}
         """
+    
+    def get_theme_colors(self):
+        """Get current theme colors dictionary."""
+        if self.current_theme == "retro":
+            return self.RETRO_THEME
+        elif self.current_theme == "dark":
+            return self.DARK_THEME
+        else:
+            return self.LIGHT_THEME
 
 
 # Global theme manager instance
@@ -834,39 +843,45 @@ class CollapsibleGroupBox(QGroupBox):
         self.setCheckable(True)
         self.setChecked(True)
         self.toggled.connect(self.on_toggled)
-        # Style the checkbox to look like a collapse button
-        self.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
+        # Apply theme-aware styling
+        self.apply_theme_style()
+    
+    def apply_theme_style(self):
+        """Apply theme-aware styling to the group box."""
+        colors = theme_manager.get_theme_colors()
+        self.setStyleSheet(f"""
+            QGroupBox {{
+                border: 1px solid {colors['card_border']};
                 border-radius: 12px;
                 margin-top: 12px;
                 padding-top: 18px;
                 font-weight: bold;
                 font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
+                color: {colors['text_primary']};
+                background-color: {colors['card_bg']};
+            }}
+            QGroupBox::title {{
                 subcontrol-origin: margin;
                 left: 15px;
                 padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
+                color: {colors['text_primary']};
+            }}
+            QGroupBox::indicator {{
                 width: 16px;
                 height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
+            }}
+            QGroupBox::indicator:unchecked {{
                 image: url(none);
-                border: 2px solid #ccc;
+                border: 2px solid {colors['border']};
                 border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
+                background-color: {colors['surface']};
+            }}
+            QGroupBox::indicator:checked {{
                 image: url(none);
-                border: 2px solid #2196F3;
+                border: 2px solid {colors['primary']};
                 border-radius: 3px;
-                background-color: #2196F3;
-            }
+                background-color: {colors['primary']};
+            }}
         """)
     
     def on_toggled(self, checked):
@@ -1067,64 +1082,9 @@ class ImageUploadTab(QWidget):
         
         # Image list
         list_group = CollapsibleGroupBox("Uploaded Images")
-        list_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         list_layout = QVBoxLayout()
         self.image_list = QListWidget()
         self.image_list.itemClicked.connect(self.on_image_selected)
-        self.image_list.setStyleSheet("""
-            QListWidget {
-                border: none;
-                border-radius: 8px;
-                padding: 8px;
-                background-color: #f8f9fa;
-            }
-            QListWidget::item {
-                padding: 12px;
-                border-radius: 6px;
-                border: none;
-                background-color: white;
-                margin-bottom: 4px;
-            }
-            QListWidget::item:hover {
-                background-color: #e3f2fd;
-            }
-            QListWidget::item:selected {
-                background-color: #2196F3;
-                color: white;
-            }
-        """)
         list_layout.addWidget(self.image_list)
         list_group.setLayout(list_layout)
         layout.addWidget(list_group)
@@ -1332,12 +1292,10 @@ class AnalysisTab(QWidget):
         
         # Instructions
         self.instruction_label = QLabel("Select an image from the Upload tab to view/edit analysis")
-        self.instruction_label.setStyleSheet("color: #666; font-style: italic;")
         layout.addWidget(self.instruction_label)
         
         # Status and progress
         self.status_label = QLabel("Ready")
-        self.status_label.setStyleSheet("color: #666; font-size: 11px;")
         layout.addWidget(self.status_label)
         
         self.progress_bar = QProgressBar()
@@ -1350,39 +1308,6 @@ class AnalysisTab(QWidget):
         
         # Title section
         title_group = CollapsibleGroupBox("Title")
-        title_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         title_layout = QVBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setPlaceholderText("Image title")
@@ -1393,39 +1318,6 @@ class AnalysisTab(QWidget):
         
         # Subject section
         subject_group = CollapsibleGroupBox("Subject")
-        subject_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         subject_layout = QVBoxLayout()
         self.subject_edit = TextEditWithCounter(placeholder="Subject description")
         self.subject_edit.setMaximumHeight(100)
@@ -1436,39 +1328,6 @@ class AnalysisTab(QWidget):
         
         # Character section
         character_group = CollapsibleGroupBox("Character")
-        character_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         character_layout = QVBoxLayout()
         self.character_edit = TextEditWithCounter(placeholder="Character description")
         self.character_edit.setMaximumHeight(100)
@@ -1479,39 +1338,6 @@ class AnalysisTab(QWidget):
         
         # Environment section
         environment_group = CollapsibleGroupBox("Environment")
-        environment_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         environment_layout = QVBoxLayout()
         self.environment_edit = TextEditWithCounter(placeholder="Environment description")
         self.environment_edit.setMaximumHeight(100)
@@ -1522,39 +1348,6 @@ class AnalysisTab(QWidget):
         
         # Art Style section
         art_style_group = CollapsibleGroupBox("Art Style")
-        art_style_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         art_style_layout = QVBoxLayout()
         self.art_style_edit = QLineEdit()
         self.art_style_edit.setPlaceholderText("Art style")
@@ -1565,39 +1358,6 @@ class AnalysisTab(QWidget):
         
         # Mood section
         mood_group = CollapsibleGroupBox("Mood")
-        mood_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         mood_layout = QVBoxLayout()
         self.mood_edit = QLineEdit()
         self.mood_edit.setPlaceholderText("Mood")
@@ -1608,39 +1368,6 @@ class AnalysisTab(QWidget):
         
         # Genre section
         genre_group = CollapsibleGroupBox("Genre")
-        genre_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         genre_layout = QVBoxLayout()
         self.genre_edit = QLineEdit()
         self.genre_edit.setPlaceholderText("Genre")
@@ -1651,39 +1378,6 @@ class AnalysisTab(QWidget):
         
         # Technical section
         technical_group = CollapsibleGroupBox("Technical Details")
-        technical_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         technical_layout = QVBoxLayout()
         self.technical_edit = TextEditWithCounter(placeholder="Technical details")
         self.technical_edit.setMaximumHeight(100)
@@ -2093,12 +1787,10 @@ class ContentTab(QWidget):
         
         # Instructions
         self.instruction_label = QLabel("Select an image from the Upload tab to generate content")
-        self.instruction_label.setStyleSheet("color: #666; font-style: italic;")
         layout.addWidget(self.instruction_label)
         
         # Status and progress
         self.status_label = QLabel("Ready")
-        self.status_label.setStyleSheet("color: #666; font-size: 11px;")
         layout.addWidget(self.status_label)
         
         self.progress_bar = QProgressBar()
@@ -2108,33 +1800,6 @@ class ContentTab(QWidget):
         
         # Platform tabs
         self.platform_tabs = QTabWidget()
-        self.platform_tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                background-color: white;
-                padding: 8px;
-            }
-            QTabBar::tab {
-                background-color: #f8f9fa;
-                padding: 10px 20px;
-                border: 1px solid #e0e0e0;
-                border-bottom: none;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
-                margin-right: 4px;
-                font-size: 13px;
-                font-weight: 500;
-            }
-            QTabBar::tab:hover {
-                background-color: #e3f2fd;
-            }
-            QTabBar::tab:selected {
-                background-color: white;
-                border-bottom: 2px solid #2196F3;
-                color: #2196F3;
-            }
-        """)
         
         # Create tabs for each platform with specific fields
         self.content_edits = {}  # Will store dicts of fields per platform
@@ -2144,39 +1809,6 @@ class ContentTab(QWidget):
         twitter_layout = QVBoxLayout()
         
         twitter_short_group = CollapsibleGroupBox("Short Version")
-        twitter_short_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         twitter_short_layout = QVBoxLayout()
         twitter_short = TextEditWithCounterAndCopy(max_chars=280, placeholder="Short tweet (under 280 chars)")
         twitter_short.setReadOnly(True)
@@ -2186,39 +1818,6 @@ class ContentTab(QWidget):
         twitter_layout.addWidget(twitter_short_group)
         
         twitter_medium_group = CollapsibleGroupBox("Medium Version")
-        twitter_medium_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         twitter_medium_layout = QVBoxLayout()
         twitter_medium = TextEditWithCounterAndCopy(max_chars=280, placeholder="Medium-length tweet")
         twitter_medium.setReadOnly(True)
@@ -2228,39 +1827,6 @@ class ContentTab(QWidget):
         twitter_layout.addWidget(twitter_medium_group)
         
         twitter_engagement_group = CollapsibleGroupBox("Engagement Version")
-        twitter_engagement_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         twitter_engagement_layout = QVBoxLayout()
         twitter_engagement = TextEditWithCounterAndCopy(max_chars=280, placeholder="Engagement-focused tweet with hashtags")
         twitter_engagement.setReadOnly(True)
@@ -2281,39 +1847,6 @@ class ContentTab(QWidget):
         instagram_layout = QVBoxLayout()
         
         instagram_caption_group = CollapsibleGroupBox("Caption")
-        instagram_caption_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         instagram_caption_layout = QVBoxLayout()
         instagram_caption = TextEditWithCounterAndCopy(placeholder="Instagram caption")
         instagram_caption.setReadOnly(True)
@@ -2322,39 +1855,6 @@ class ContentTab(QWidget):
         instagram_layout.addWidget(instagram_caption_group)
         
         instagram_hashtags_group = CollapsibleGroupBox("Hashtags")
-        instagram_hashtags_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         instagram_hashtags_layout = QVBoxLayout()
         instagram_hashtags = TextEditWithCounterAndCopy(placeholder="Hashtags (comma-separated)")
         instagram_hashtags.setReadOnly(True)
@@ -2375,39 +1875,6 @@ class ContentTab(QWidget):
         reddit_layout = QVBoxLayout()
         
         reddit_title_group = CollapsibleGroupBox("Title")
-        reddit_title_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         reddit_title_layout = QVBoxLayout()
         reddit_title = TextEditWithCounterAndCopy(max_chars=300, placeholder="Post title")
         reddit_title.setReadOnly(True)
@@ -2417,39 +1884,6 @@ class ContentTab(QWidget):
         reddit_layout.addWidget(reddit_title_group)
         
         reddit_body_group = CollapsibleGroupBox("Body")
-        reddit_body_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         reddit_body_layout = QVBoxLayout()
         reddit_body = TextEditWithCounterAndCopy(placeholder="Post body content")
         reddit_body.setReadOnly(True)
@@ -2469,39 +1903,6 @@ class ContentTab(QWidget):
         artstation_layout = QVBoxLayout()
         
         artstation_title_group = CollapsibleGroupBox("Title")
-        artstation_title_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         artstation_title_layout = QVBoxLayout()
         artstation_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         artstation_title.setReadOnly(True)
@@ -2511,39 +1912,6 @@ class ContentTab(QWidget):
         artstation_layout.addWidget(artstation_title_group)
         
         artstation_description_group = CollapsibleGroupBox("Description")
-        artstation_description_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         artstation_description_layout = QVBoxLayout()
         artstation_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         artstation_description.setReadOnly(True)
@@ -2552,39 +1920,6 @@ class ContentTab(QWidget):
         artstation_layout.addWidget(artstation_description_group)
         
         artstation_tags_group = CollapsibleGroupBox("Tags")
-        artstation_tags_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         artstation_tags_layout = QVBoxLayout()
         artstation_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         artstation_tags.setReadOnly(True)
@@ -2606,39 +1941,6 @@ class ContentTab(QWidget):
         deviantart_layout = QVBoxLayout()
         
         deviantart_title_group = CollapsibleGroupBox("Title")
-        deviantart_title_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         deviantart_title_layout = QVBoxLayout()
         deviantart_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         deviantart_title.setReadOnly(True)
@@ -2648,39 +1950,6 @@ class ContentTab(QWidget):
         deviantart_layout.addWidget(deviantart_title_group)
         
         deviantart_description_group = CollapsibleGroupBox("Description")
-        deviantart_description_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         deviantart_description_layout = QVBoxLayout()
         deviantart_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         deviantart_description.setReadOnly(True)
@@ -2689,39 +1958,6 @@ class ContentTab(QWidget):
         deviantart_layout.addWidget(deviantart_description_group)
         
         deviantart_tags_group = CollapsibleGroupBox("Tags")
-        deviantart_tags_group.setStyleSheet("""
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 12px;
-                margin-top: 12px;
-                padding-top: 18px;
-                font-weight: bold;
-                font-size: 13px;
-                color: #333;
-                background-color: white;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 15px;
-                padding: 0 5px 0 5px;
-            }
-            QGroupBox::indicator {
-                width: 16px;
-                height: 16px;
-            }
-            QGroupBox::indicator:unchecked {
-                image: url(none);
-                border: 2px solid #ccc;
-                border-radius: 3px;
-                background-color: white;
-            }
-            QGroupBox::indicator:checked {
-                image: url(none);
-                border: 2px solid #2196F3;
-                border-radius: 3px;
-                background-color: #2196F3;
-            }
-        """)
         deviantart_tags_layout = QVBoxLayout()
         deviantart_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         deviantart_tags.setReadOnly(True)
@@ -3194,6 +2430,10 @@ class MainWindow(QMainWindow):
         theme_icon = "🕹️" if new_theme == "retro" else ("🌙" if new_theme == "light" else "☀️")
         self.theme_btn.setText(theme_icon)
         self.setStyleSheet(theme_manager.get_stylesheet())
+        
+        # Update all CollapsibleGroupBox widgets
+        for widget in self.findChildren(CollapsibleGroupBox):
+            widget.apply_theme_style()
         
         # Update header styling
         header = self.findChild(QWidget)
