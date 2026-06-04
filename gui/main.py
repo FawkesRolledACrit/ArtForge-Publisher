@@ -1219,9 +1219,12 @@ class AnalysisTab(QWidget):
         self.progress_bar.setMaximumHeight(20)
         layout.addWidget(self.progress_bar)
         
-        # Analysis form
-        form_group = CollapsibleGroupBox("Analysis Details")
-        form_group.setStyleSheet("""
+        # Analysis form - individual collapsible sections
+        layout.addWidget(QLabel("<b>Analysis Details</b>"))
+        
+        # Title section
+        title_group = CollapsibleGroupBox("Title")
+        title_group.setStyleSheet("""
             QGroupBox {
                 border: 1px solid #e0e0e0;
                 border-radius: 12px;
@@ -1254,82 +1257,314 @@ class AnalysisTab(QWidget):
                 background-color: #2196F3;
             }
         """)
-        form_layout = QFormLayout()
-        
+        title_layout = QVBoxLayout()
         self.title_edit = QLineEdit()
         self.title_edit.setPlaceholderText("Image title")
+        self.title_edit.setReadOnly(True)
+        title_layout.addWidget(self.title_edit)
+        title_group.setLayout(title_layout)
+        layout.addWidget(title_group)
+        
+        # Subject section
+        subject_group = CollapsibleGroupBox("Subject")
+        subject_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        subject_layout = QVBoxLayout()
         self.subject_edit = TextEditWithCounter(placeholder="Subject description")
         self.subject_edit.setMaximumHeight(100)
+        self.subject_edit.setReadOnly(True)
+        subject_layout.addWidget(self.subject_edit)
+        subject_group.setLayout(subject_layout)
+        layout.addWidget(subject_group)
+        
+        # Character section
+        character_group = CollapsibleGroupBox("Character")
+        character_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        character_layout = QVBoxLayout()
         self.character_edit = TextEditWithCounter(placeholder="Character description")
         self.character_edit.setMaximumHeight(100)
+        self.character_edit.setReadOnly(True)
+        character_layout.addWidget(self.character_edit)
+        character_group.setLayout(character_layout)
+        layout.addWidget(character_group)
+        
+        # Environment section
+        environment_group = CollapsibleGroupBox("Environment")
+        environment_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        environment_layout = QVBoxLayout()
         self.environment_edit = TextEditWithCounter(placeholder="Environment description")
         self.environment_edit.setMaximumHeight(100)
+        self.environment_edit.setReadOnly(True)
+        environment_layout.addWidget(self.environment_edit)
+        environment_group.setLayout(environment_layout)
+        layout.addWidget(environment_group)
+        
+        # Art Style section
+        art_style_group = CollapsibleGroupBox("Art Style")
+        art_style_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        art_style_layout = QVBoxLayout()
         self.art_style_edit = QLineEdit()
         self.art_style_edit.setPlaceholderText("Art style")
+        self.art_style_edit.setReadOnly(True)
+        art_style_layout.addWidget(self.art_style_edit)
+        art_style_group.setLayout(art_style_layout)
+        layout.addWidget(art_style_group)
+        
+        # Mood section
+        mood_group = CollapsibleGroupBox("Mood")
+        mood_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        mood_layout = QVBoxLayout()
         self.mood_edit = QLineEdit()
         self.mood_edit.setPlaceholderText("Mood")
+        self.mood_edit.setReadOnly(True)
+        mood_layout.addWidget(self.mood_edit)
+        mood_group.setLayout(mood_layout)
+        layout.addWidget(mood_group)
+        
+        # Genre section
+        genre_group = CollapsibleGroupBox("Genre")
+        genre_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        genre_layout = QVBoxLayout()
         self.genre_edit = QLineEdit()
         self.genre_edit.setPlaceholderText("Genre")
+        self.genre_edit.setReadOnly(True)
+        genre_layout.addWidget(self.genre_edit)
+        genre_group.setLayout(genre_layout)
+        layout.addWidget(genre_group)
+        
+        # Technical section
+        technical_group = CollapsibleGroupBox("Technical Details")
+        technical_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        technical_layout = QVBoxLayout()
         self.technical_edit = TextEditWithCounter(placeholder="Technical details")
         self.technical_edit.setMaximumHeight(100)
-        
-        # Set all fields to read-only by default
-        self.title_edit.setReadOnly(True)
-        self.subject_edit.setReadOnly(True)
-        self.character_edit.setReadOnly(True)
-        self.environment_edit.setReadOnly(True)
-        self.art_style_edit.setReadOnly(True)
-        self.mood_edit.setReadOnly(True)
-        self.genre_edit.setReadOnly(True)
         self.technical_edit.setReadOnly(True)
-        
-        # Apply styling to form widgets
-        for widget in [self.title_edit, self.art_style_edit, self.mood_edit, self.genre_edit]:
-            widget.setStyleSheet("""
-                QLineEdit {
-                    padding: 10px 12px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    background-color: #f8f9fa;
-                    font-size: 13px;
-                }
-                QLineEdit:focus {
-                    border: 2px solid #2196F3;
-                    background-color: white;
-                }
-                QLineEdit[readOnly="true"] {
-                    background-color: #f0f0f0;
-                    color: #666;
-                    border: 1px solid #e0e0e0;
-                }
-            """)
-        
-        for widget in [self.subject_edit, self.character_edit, self.environment_edit, self.technical_edit]:
-            widget.text_edit.setStyleSheet("""
-                QTextEdit {
-                    padding: 10px 12px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    background-color: #f8f9fa;
-                    font-size: 13px;
-                }
-                QTextEdit:focus {
-                    border: 2px solid #2196F3;
-                    background-color: white;
-                }
-            """)
-        
-        form_layout.addRow("Title:", self.title_edit)
-        form_layout.addRow("Subject:", self.subject_edit)
-        form_layout.addRow("Character:", self.character_edit)
-        form_layout.addRow("Environment:", self.environment_edit)
-        form_layout.addRow("Art Style:", self.art_style_edit)
-        form_layout.addRow("Mood:", self.mood_edit)
-        form_layout.addRow("Genre:", self.genre_edit)
-        form_layout.addRow("Technical:", self.technical_edit)
-        
-        form_group.setLayout(form_layout)
-        layout.addWidget(form_group)
+        technical_layout.addWidget(self.technical_edit)
+        technical_group.setLayout(technical_layout)
+        layout.addWidget(technical_group)
         
         # Buttons
         button_layout = QHBoxLayout()
@@ -1778,25 +2013,134 @@ class ContentTab(QWidget):
         # Create tabs for each platform with specific fields
         self.content_edits = {}  # Will store dicts of fields per platform
         
-        # X/Twitter tab - 3 fields
+        # X/Twitter tab - 3 collapsible fields
         twitter_tab = QWidget()
         twitter_layout = QVBoxLayout()
-        twitter_layout.addWidget(QLabel("<b>Short Version</b>"))
+        
+        twitter_short_group = CollapsibleGroupBox("Short Version")
+        twitter_short_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        twitter_short_layout = QVBoxLayout()
         twitter_short = TextEditWithCounterAndCopy(max_chars=280, placeholder="Short tweet (under 280 chars)")
         twitter_short.setReadOnly(True)
         twitter_short.setMaximumHeight(100)
-        twitter_layout.addWidget(twitter_short)
+        twitter_short_layout.addWidget(twitter_short)
+        twitter_short_group.setLayout(twitter_short_layout)
+        twitter_layout.addWidget(twitter_short_group)
         
-        twitter_layout.addWidget(QLabel("<b>Medium Version</b>"))
+        twitter_medium_group = CollapsibleGroupBox("Medium Version")
+        twitter_medium_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        twitter_medium_layout = QVBoxLayout()
         twitter_medium = TextEditWithCounterAndCopy(max_chars=280, placeholder="Medium-length tweet")
         twitter_medium.setReadOnly(True)
         twitter_medium.setMaximumHeight(120)
-        twitter_layout.addWidget(twitter_medium)
+        twitter_medium_layout.addWidget(twitter_medium)
+        twitter_medium_group.setLayout(twitter_medium_layout)
+        twitter_layout.addWidget(twitter_medium_group)
         
-        twitter_layout.addWidget(QLabel("<b>Engagement Version</b>"))
+        twitter_engagement_group = CollapsibleGroupBox("Engagement Version")
+        twitter_engagement_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        twitter_engagement_layout = QVBoxLayout()
         twitter_engagement = TextEditWithCounterAndCopy(max_chars=280, placeholder="Engagement-focused tweet with hashtags")
         twitter_engagement.setReadOnly(True)
-        twitter_layout.addWidget(twitter_engagement)
+        twitter_engagement_layout.addWidget(twitter_engagement)
+        twitter_engagement_group.setLayout(twitter_engagement_layout)
+        twitter_layout.addWidget(twitter_engagement_group)
         
         twitter_tab.setLayout(twitter_layout)
         self.platform_tabs.addTab(twitter_tab, "𝕏 Twitter")
@@ -1806,19 +2150,92 @@ class ContentTab(QWidget):
             "engagement": twitter_engagement
         }
         
-        # Instagram tab - 2 fields
+        # Instagram tab - 2 collapsible fields
         instagram_tab = QWidget()
         instagram_layout = QVBoxLayout()
-        instagram_layout.addWidget(QLabel("<b>Caption</b>"))
+        
+        instagram_caption_group = CollapsibleGroupBox("Caption")
+        instagram_caption_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        instagram_caption_layout = QVBoxLayout()
         instagram_caption = TextEditWithCounterAndCopy(placeholder="Instagram caption")
         instagram_caption.setReadOnly(True)
-        instagram_layout.addWidget(instagram_caption)
+        instagram_caption_layout.addWidget(instagram_caption)
+        instagram_caption_group.setLayout(instagram_caption_layout)
+        instagram_layout.addWidget(instagram_caption_group)
         
-        instagram_layout.addWidget(QLabel("<b>Hashtags</b>"))
+        instagram_hashtags_group = CollapsibleGroupBox("Hashtags")
+        instagram_hashtags_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        instagram_hashtags_layout = QVBoxLayout()
         instagram_hashtags = TextEditWithCounterAndCopy(placeholder="Hashtags (comma-separated)")
         instagram_hashtags.setReadOnly(True)
         instagram_hashtags.setMaximumHeight(100)
-        instagram_layout.addWidget(instagram_hashtags)
+        instagram_hashtags_layout.addWidget(instagram_hashtags)
+        instagram_hashtags_group.setLayout(instagram_hashtags_layout)
+        instagram_layout.addWidget(instagram_hashtags_group)
         
         instagram_tab.setLayout(instagram_layout)
         self.platform_tabs.addTab(instagram_tab, "📷 Instagram")
@@ -1827,19 +2244,92 @@ class ContentTab(QWidget):
             "hashtags": instagram_hashtags
         }
         
-        # Reddit tab - 2 fields
+        # Reddit tab - 2 collapsible fields
         reddit_tab = QWidget()
         reddit_layout = QVBoxLayout()
-        reddit_layout.addWidget(QLabel("<b>Title</b>"))
+        
+        reddit_title_group = CollapsibleGroupBox("Title")
+        reddit_title_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        reddit_title_layout = QVBoxLayout()
         reddit_title = TextEditWithCounterAndCopy(max_chars=300, placeholder="Post title")
         reddit_title.setReadOnly(True)
         reddit_title.setMaximumHeight(80)
-        reddit_layout.addWidget(reddit_title)
+        reddit_title_layout.addWidget(reddit_title)
+        reddit_title_group.setLayout(reddit_title_layout)
+        reddit_layout.addWidget(reddit_title_group)
         
-        reddit_layout.addWidget(QLabel("<b>Body</b>"))
+        reddit_body_group = CollapsibleGroupBox("Body")
+        reddit_body_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        reddit_body_layout = QVBoxLayout()
         reddit_body = TextEditWithCounterAndCopy(placeholder="Post body content")
         reddit_body.setReadOnly(True)
-        reddit_layout.addWidget(reddit_body)
+        reddit_body_layout.addWidget(reddit_body)
+        reddit_body_group.setLayout(reddit_body_layout)
+        reddit_layout.addWidget(reddit_body_group)
         
         reddit_tab.setLayout(reddit_layout)
         self.platform_tabs.addTab(reddit_tab, "📱 Reddit")
@@ -1848,25 +2338,134 @@ class ContentTab(QWidget):
             "body": reddit_body
         }
         
-        # ArtStation tab - 3 fields
+        # ArtStation tab - 3 collapsible fields
         artstation_tab = QWidget()
         artstation_layout = QVBoxLayout()
-        artstation_layout.addWidget(QLabel("<b>Title</b>"))
+        
+        artstation_title_group = CollapsibleGroupBox("Title")
+        artstation_title_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        artstation_title_layout = QVBoxLayout()
         artstation_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         artstation_title.setReadOnly(True)
         artstation_title.setMaximumHeight(80)
-        artstation_layout.addWidget(artstation_title)
+        artstation_title_layout.addWidget(artstation_title)
+        artstation_title_group.setLayout(artstation_title_layout)
+        artstation_layout.addWidget(artstation_title_group)
         
-        artstation_layout.addWidget(QLabel("<b>Description</b>"))
+        artstation_description_group = CollapsibleGroupBox("Description")
+        artstation_description_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        artstation_description_layout = QVBoxLayout()
         artstation_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         artstation_description.setReadOnly(True)
-        artstation_layout.addWidget(artstation_description)
+        artstation_description_layout.addWidget(artstation_description)
+        artstation_description_group.setLayout(artstation_description_layout)
+        artstation_layout.addWidget(artstation_description_group)
         
-        artstation_layout.addWidget(QLabel("<b>Tags</b>"))
+        artstation_tags_group = CollapsibleGroupBox("Tags")
+        artstation_tags_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        artstation_tags_layout = QVBoxLayout()
         artstation_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         artstation_tags.setReadOnly(True)
         artstation_tags.setMaximumHeight(100)
-        artstation_layout.addWidget(artstation_tags)
+        artstation_tags_layout.addWidget(artstation_tags)
+        artstation_tags_group.setLayout(artstation_tags_layout)
+        artstation_layout.addWidget(artstation_tags_group)
         
         artstation_tab.setLayout(artstation_layout)
         self.platform_tabs.addTab(artstation_tab, "🎨 ArtStation")
@@ -1876,25 +2475,134 @@ class ContentTab(QWidget):
             "tags": artstation_tags
         }
         
-        # DeviantArt tab - 3 fields
+        # DeviantArt tab - 3 collapsible fields
         deviantart_tab = QWidget()
         deviantart_layout = QVBoxLayout()
-        deviantart_layout.addWidget(QLabel("<b>Title</b>"))
+        
+        deviantart_title_group = CollapsibleGroupBox("Title")
+        deviantart_title_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        deviantart_title_layout = QVBoxLayout()
         deviantart_title = TextEditWithCounterAndCopy(placeholder="Artwork title")
         deviantart_title.setReadOnly(True)
         deviantart_title.setMaximumHeight(80)
-        deviantart_layout.addWidget(deviantart_title)
+        deviantart_title_layout.addWidget(deviantart_title)
+        deviantart_title_group.setLayout(deviantart_title_layout)
+        deviantart_layout.addWidget(deviantart_title_group)
         
-        deviantart_layout.addWidget(QLabel("<b>Description</b>"))
+        deviantart_description_group = CollapsibleGroupBox("Description")
+        deviantart_description_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        deviantart_description_layout = QVBoxLayout()
         deviantart_description = TextEditWithCounterAndCopy(placeholder="Artwork description")
         deviantart_description.setReadOnly(True)
-        deviantart_layout.addWidget(deviantart_description)
+        deviantart_description_layout.addWidget(deviantart_description)
+        deviantart_description_group.setLayout(deviantart_description_layout)
+        deviantart_layout.addWidget(deviantart_description_group)
         
-        deviantart_layout.addWidget(QLabel("<b>Tags</b>"))
+        deviantart_tags_group = CollapsibleGroupBox("Tags")
+        deviantart_tags_group.setStyleSheet("""
+            QGroupBox {
+                border: 1px solid #e0e0e0;
+                border-radius: 12px;
+                margin-top: 12px;
+                padding-top: 18px;
+                font-weight: bold;
+                font-size: 13px;
+                color: #333;
+                background-color: white;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 5px 0 5px;
+            }
+            QGroupBox::indicator {
+                width: 16px;
+                height: 16px;
+            }
+            QGroupBox::indicator:unchecked {
+                image: url(none);
+                border: 2px solid #ccc;
+                border-radius: 3px;
+                background-color: white;
+            }
+            QGroupBox::indicator:checked {
+                image: url(none);
+                border: 2px solid #2196F3;
+                border-radius: 3px;
+                background-color: #2196F3;
+            }
+        """)
+        deviantart_tags_layout = QVBoxLayout()
         deviantart_tags = TextEditWithCounterAndCopy(placeholder="SEO tags")
         deviantart_tags.setReadOnly(True)
         deviantart_tags.setMaximumHeight(100)
-        deviantart_layout.addWidget(deviantart_tags)
+        deviantart_tags_layout.addWidget(deviantart_tags)
+        deviantart_tags_group.setLayout(deviantart_tags_layout)
+        deviantart_layout.addWidget(deviantart_tags_group)
         
         deviantart_tab.setLayout(deviantart_layout)
         self.platform_tabs.addTab(deviantart_tab, "🖌️ DeviantArt")
