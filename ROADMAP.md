@@ -43,7 +43,7 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Professional color scheme with dark/light mode support
 - [x] Custom fonts (Inter, Roboto, or similar)
 - [x] Smooth animations and transitions
-- [ ] Loading spinners and skeleton screens
+- [x] Loading spinners and skeleton screens
 - [ ] Status bar with connection status and last action
 - [ ] Toolbar with quick action buttons
 - [ ] Menu bar with File, Edit, View, Help menus

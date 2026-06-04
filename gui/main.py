@@ -11,8 +11,8 @@ from PyQt6.QtWidgets import (
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
     QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve
-from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect
+from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient
 
 
 class ThemeManager:
@@ -643,6 +643,115 @@ class ToastNotification(QWidget):
         self.opacity_animation.start()
 
 
+class SpinnerWidget(QWidget):
+    """Animated spinner widget for loading states."""
+    
+    def __init__(self, size=40, parent=None):
+        super().__init__(parent)
+        self.size = size
+        self.angle = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_rotation)
+        self.init_ui()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        self.setFixedSize(self.size, self.size)
+    
+    def start(self):
+        """Start the spinner animation."""
+        self.timer.start(50)  # Update every 50ms
+    
+    def stop(self):
+        """Stop the spinner animation."""
+        self.timer.stop()
+    
+    def update_rotation(self):
+        """Update the rotation angle."""
+        self.angle = (self.angle + 15) % 360
+        self.update()
+    
+    def paintEvent(self, event):
+        """Paint the spinner."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Get theme colors
+        primary_color = QColor(theme_manager.get_color('primary'))
+        
+        # Draw spinner arc
+        center_x = self.width() // 2
+        center_y = self.height() // 2
+        radius = min(center_x, center_y) - 4
+        
+        pen = QPen(primary_color, 3)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(pen)
+        
+        # Draw arc with current rotation
+        rect = QRect(center_x - radius, center_y - radius, radius * 2, radius * 2)
+        start_angle = self.angle * 16  # Qt uses 1/16th degrees
+        span_angle = 270 * 16  # Draw 270 degrees
+        painter.drawArc(rect, start_angle, span_angle)
+
+
+class SkeletonWidget(QWidget):
+    """Skeleton loading widget for placeholder content."""
+    
+    def __init__(self, height=40, width=None, parent=None):
+        super().__init__(parent)
+        self.height = height
+        self.width = width
+        self.init_ui()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        if self.width:
+            self.setFixedSize(self.width, self.height)
+        else:
+            self.setFixedHeight(self.height)
+        
+        # Animation for shimmer effect
+        self.shimmer_offset = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_shimmer)
+    
+    def start(self):
+        """Start the shimmer animation."""
+        self.timer.start(50)
+    
+    def stop(self):
+        """Stop the shimmer animation."""
+        self.timer.stop()
+    
+    def update_shimmer(self):
+        """Update the shimmer offset."""
+        self.shimmer_offset = (self.shimmer_offset + 5) % 200
+        self.update()
+    
+    def paintEvent(self, event):
+        """Paint the skeleton."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Get theme colors
+        bg_color = QColor(theme_manager.get_color('surface'))
+        shimmer_color = QColor(theme_manager.get_color('border'))
+        
+        # Draw background
+        painter.fillRect(self.rect(), bg_color)
+        
+        # Draw shimmer gradient
+        gradient = QLinearGradient(self.shimmer_offset - 100, 0, self.shimmer_offset + 100, 0)
+        gradient.setColorAt(0, bg_color)
+        gradient.setColorAt(0.5, shimmer_color)
+        gradient.setColorAt(1, bg_color)
+        
+        painter.setBrush(QBrush(gradient))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.drawRoundedRect(self.rect(), 4, 4)
+
+
 class ProgressOverlay(QWidget):
     """Progress overlay widget for long-running operations."""
     
@@ -670,17 +779,16 @@ class ProgressOverlay(QWidget):
         container_layout = QVBoxLayout()
         container_layout.setContentsMargins(30, 30, 30, 30)
         
-        # Spinner (using QLabel with emoji)
-        spinner = QLabel("⏳")
-        spinner.setStyleSheet("font-size: 48px;")
-        spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        container_layout.addWidget(spinner)
+        # Animated spinner
+        self.spinner = SpinnerWidget(size=48)
+        self.spinner.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container_layout.addWidget(self.spinner, 0, Qt.AlignmentFlag.AlignCenter)
         
         # Message
-        message_label = QLabel(self.message)
-        message_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
-        message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        container_layout.addWidget(message_label)
+        self.message_label = QLabel(self.message)
+        self.message_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+        self.message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        container_layout.addWidget(self.message_label)
         
         container.setLayout(container_layout)
         layout.addWidget(container)
@@ -693,15 +801,17 @@ class ProgressOverlay(QWidget):
             self.setGeometry(parent_widget.rect())
         self.show()
         self.raise_()
+        self.spinner.start()
+    
+    def hide(self):
+        """Hide the overlay and stop spinner."""
+        self.spinner.stop()
+        super().hide()
     
     def set_message(self, message):
         """Update the progress message."""
         self.message = message
-        # Find and update the message label
-        for child in self.findChildren(QLabel):
-            if child.text() != "⏳":
-                child.setText(message)
-                break
+        self.message_label.setText(message)
 
 
 class CollapsibleGroupBox(QGroupBox):
@@ -1060,6 +1170,10 @@ class ImageUploadTab(QWidget):
             self.status_label.setText(message)
             self.progress_overlay.set_message(message)
             self.progress_overlay.show_overlay(self)
+            # Show skeleton items in list
+            self.image_list.clear()
+            for i in range(5):
+                self.image_list.addItem("Loading...")
         else:
             self.progress_bar.setRange(0, 1)
             self.progress_bar.setValue(1)
