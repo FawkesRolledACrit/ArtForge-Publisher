@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
     QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton,
-    QComboBox, QCheckBox
+    QComboBox, QCheckBox, QStatusBar, QMenuBar, QAction
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect, QUrl, QBuffer, QIODevice
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient
@@ -3183,7 +3183,12 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
+        self.current_image_id = None
+        self.last_action = "Ready"
         self.init_ui()
+        self.setup_status_bar()
+        self.setup_menu_bar()
+        self.check_connections()
     
     def init_ui(self):
         """Initialize the UI."""
@@ -3264,6 +3269,392 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.tabs)
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
+    
+    def setup_status_bar(self):
+        """Setup the status bar with connection status and last action."""
+        self.status_bar = QStatusBar()
+        self.status_bar.setStyleSheet("""
+            QStatusBar {
+                background-color: #0a0a0a;
+                color: #00FF00;
+                border-top: 1px solid #00FF00;
+                padding: 5px;
+            }
+        """)
+        
+        # Connection status label
+        self.connection_status = QLabel("🔴 Backend: Disconnected | Ollama: Disconnected")
+        self.connection_status.setStyleSheet("color: #FF0000;")
+        
+        # Last action label
+        self.last_action_label = QLabel("Ready")
+        
+        self.status_bar.addPermanentWidget(self.connection_status, 1)
+        self.status_bar.addPermanentWidget(self.last_action_label, 2)
+        self.setStatusBar(self.status_bar)
+    
+    def setup_menu_bar(self):
+        """Setup the menu bar with File menu."""
+        menubar = self.menuBar()
+        menubar.setStyleSheet("""
+            QMenuBar {
+                background-color: #0a0a0a;
+                color: #00FF00;
+                border-bottom: 1px solid #00FF00;
+            }
+            QMenuBar::item {
+                background-color: transparent;
+                padding: 5px 10px;
+            }
+            QMenuBar::item:selected {
+                background-color: #008800;
+            }
+            QMenu {
+                background-color: #0a0a0a;
+                color: #00FF00;
+                border: 1px solid #00FF00;
+            }
+            QMenu::item {
+                padding: 5px 20px;
+            }
+            QMenu::item:selected {
+                background-color: #008800;
+            }
+        """)
+        
+        # File menu
+        file_menu = menubar.addMenu("File")
+        
+        # Image Directory
+        image_dir_action = QAction("Image Directory", self)
+        image_dir_action.setStatusTip("Open the directory where uploaded images are stored")
+        image_dir_action.triggered.connect(self.open_image_directory)
+        file_menu.addAction(image_dir_action)
+        
+        # Import Image
+        import_image_action = QAction("Import Image", self)
+        import_image_action.setStatusTip("Import an image and auto-select it for analysis")
+        import_image_action.triggered.connect(self.import_image)
+        file_menu.addAction(import_image_action)
+        
+        file_menu.addSeparator()
+        
+        # Content Directory
+        content_dir_action = QAction("Content Directory", self)
+        content_dir_action.setStatusTip("Open the directory where content is stored")
+        content_dir_action.triggered.connect(self.open_content_directory)
+        file_menu.addAction(content_dir_action)
+        
+        # Import Content
+        import_content_action = QAction("Import Content", self)
+        import_content_action.setStatusTip("Import content from a text or markdown file")
+        import_content_action.triggered.connect(self.import_content)
+        file_menu.addAction(import_content_action)
+        
+        # Export Content
+        export_content_action = QAction("Export Content", self)
+        export_content_action.setStatusTip("Export generated content to a text or markdown file")
+        export_content_action.triggered.connect(self.export_content)
+        file_menu.addAction(export_content_action)
+        
+        file_menu.addSeparator()
+        
+        # Configuration
+        config_action = QAction("Configuration", self)
+        config_action.setStatusTip("Open configuration settings")
+        config_action.triggered.connect(self.open_configuration)
+        file_menu.addAction(config_action)
+    
+    def check_connections(self):
+        """Check connection status to backend and Ollama."""
+        def check():
+            try:
+                # Check backend
+                backend_response = requests.get("http://localhost:8000/health", timeout=2)
+                backend_connected = backend_response.status_code == 200
+            except:
+                backend_connected = False
+            
+            try:
+                # Check Ollama
+                ollama_response = requests.get("http://localhost:11434/api/tags", timeout=2)
+                ollama_connected = ollama_response.status_code == 200
+            except:
+                ollama_connected = False
+            
+            # Update status
+            if backend_connected and ollama_connected:
+                self.connection_status.setText("🟢 Backend: Connected | Ollama: Connected")
+                self.connection_status.setStyleSheet("color: #00FF00;")
+            elif backend_connected:
+                self.connection_status.setText("🟡 Backend: Connected | Ollama: Disconnected")
+                self.connection_status.setStyleSheet("color: #FFFF00;")
+            elif ollama_connected:
+                self.connection_status.setText("🟡 Backend: Disconnected | Ollama: Connected")
+                self.connection_status.setStyleSheet("color: #FFFF00;")
+            else:
+                self.connection_status.setText("🔴 Backend: Disconnected | Ollama: Disconnected")
+                self.connection_status.setStyleSheet("color: #FF0000;")
+        
+        check()
+        # Check every 5 seconds
+        self.connection_timer = QTimer()
+        self.connection_timer.timeout.connect(check)
+        self.connection_timer.start(5000)
+    
+    def update_status(self, action):
+        """Update the last action status."""
+        self.last_action = action
+        self.last_action_label.setText(action)
+    
+    def open_image_directory(self):
+        """Open the image storage directory."""
+        import subprocess
+        import os
+        image_dir = Path(__file__).parent.parent / "backend" / "storage" / "images"
+        if image_dir.exists():
+            os.startfile(str(image_dir))
+            self.update_status("Opened image directory")
+        else:
+            self.show_toast("Image directory not found", "error")
+    
+    def import_image(self):
+        """Import an image and auto-select it for analysis."""
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setNameFilter("Images (*.png *.jpg *.jpeg *.webp *.bmp *.tiff)")
+        
+        if file_dialog.exec():
+            file_path = file_dialog.selectedFiles()[0]
+            self.update_status(f"Importing image: {Path(file_path).name}")
+            
+            # Upload the image
+            try:
+                with open(file_path, "rb") as f:
+                    files = {"file": (Path(file_path).name, f, "image/png")}
+                    response = requests.post(
+                        "http://localhost:8000/api/v1/images/upload",
+                        files=files,
+                        timeout=30
+                    )
+                
+                if response.status_code == 200:
+                    image_data = response.json()
+                    image_id = image_data["id"]
+                    self.current_image_id = image_id
+                    self.update_status(f"Imported image: {image_id}")
+                    
+                    # Refresh image list
+                    self.upload_tab.load_images()
+                    
+                    # Select the image
+                    for i in range(self.upload_tab.image_list.count()):
+                        item = self.upload_tab.image_list.item(i)
+                        if image_id in item.text():
+                            self.upload_tab.image_list.setCurrentItem(item)
+                            self.upload_tab.on_image_selected(item)
+                            break
+                    
+                    # Switch to Analysis tab
+                    self.tabs.setCurrentIndex(1)
+                    self.show_toast("Image imported successfully!", "success")
+                else:
+                    self.show_toast(f"Import failed: {response.text}", "error")
+            except Exception as e:
+                self.show_toast(f"Import error: {str(e)}", "error")
+    
+    def open_content_directory(self):
+        """Open the content storage directory."""
+        import subprocess
+        import os
+        content_dir = Path(__file__).parent.parent / "backend" / "storage" / "content"
+        content_dir.mkdir(parents=True, exist_ok=True)
+        os.startfile(str(content_dir))
+        self.update_status("Opened content directory")
+    
+    def import_content(self):
+        """Import content from a text or markdown file."""
+        file_dialog = QFileDialog()
+        file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
+        file_dialog.setNameFilter("Content files (*.txt *.md)")
+        
+        if file_dialog.exec():
+            file_path = file_dialog.selectedFiles()[0]
+            self.update_status(f"Importing content from: {Path(file_path).name}")
+            
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                
+                # Parse the content according to the specified format
+                parsed_content = self.parse_content_file(content)
+                
+                if not self.current_image_id:
+                    self.show_toast("Please select an image first", "error")
+                    return
+                
+                # Save the parsed content to the database
+                response = requests.post(
+                    f"http://localhost:8000/api/v1/content/{self.current_image_id}",
+                    json=parsed_content,
+                    timeout=30
+                )
+                
+                if response.status_code == 200:
+                    self.update_status("Content imported successfully")
+                    self.show_toast("Content imported successfully!", "success")
+                    # Refresh content tab
+                    self.content_tab.load_content(self.current_image_id)
+                else:
+                    self.show_toast(f"Import failed: {response.text}", "error")
+            except Exception as e:
+                self.show_toast(f"Import error: {str(e)}", "error")
+    
+    def parse_content_file(self, content):
+        """Parse content file according to the specified format."""
+        parsed = {}
+        current_platform = None
+        current_section = None
+        
+        for line in content.split('\n'):
+            line = line.strip()
+            
+            # Platform headers
+            if line.startswith('# ') and not line.startswith('## '):
+                current_platform = line[2:].lower()
+                if current_platform not in parsed:
+                    parsed[current_platform] = {}
+            
+            # Section headers
+            elif line.startswith('## '):
+                current_section = line[3:].lower()
+                if current_platform and current_section:
+                    parsed[current_platform][current_section] = []
+            
+            # Content lines (in brackets)
+            elif line.startswith('[') and line.endswith(']'):
+                if current_platform and current_section:
+                    content_text = line[1:-1]
+                    parsed[current_platform][current_section] = content_text
+        
+        return parsed
+    
+    def export_content(self):
+        """Export generated content to a text or markdown file."""
+        if not self.current_image_id:
+            self.show_toast("Please select an image first", "error")
+            return
+        
+        # Get the content for the current image
+        try:
+            response = requests.get(
+                f"http://localhost:8000/api/v1/content/{self.current_image_id}",
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                self.show_toast("No content found for this image", "error")
+                return
+            
+            content_data = response.json()
+            
+            # Format the content according to the specified format
+            formatted_content = self.format_content_for_export(content_data)
+            
+            # Ask user where to save
+            file_dialog = QFileDialog()
+            file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+            file_dialog.setNameFilter("Text files (*.txt);;Markdown files (*.md)")
+            file_dialog.setDefaultSuffix("txt")
+            
+            if file_dialog.exec():
+                file_path = file_dialog.selectedFiles()[0]
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(formatted_content)
+                
+                self.update_status(f"Exported content to: {Path(file_path).name}")
+                self.show_toast("Content exported successfully!", "success")
+        except Exception as e:
+            self.show_toast(f"Export error: {str(e)}", "error")
+    
+    def format_content_for_export(self, content_data):
+        """Format content data for export according to the specified format."""
+        lines = []
+        
+        # Twitter
+        if "twitter" in content_data:
+            lines.append("# Twitter")
+            twitter = content_data["twitter"]
+            if "short" in twitter:
+                lines.append("## Short")
+                lines.append(f"[{twitter['short']}]")
+            if "medium" in twitter:
+                lines.append("## Medium")
+                lines.append(f"[{twitter['medium']}]")
+            if "engagement" in twitter:
+                lines.append("## Engagement")
+                lines.append(f"[{twitter['engagement']}]")
+            lines.append("")
+        
+        # Instagram
+        if "instagram" in content_data:
+            lines.append("# Instagram")
+            instagram = content_data["instagram"]
+            if "caption" in instagram:
+                lines.append("## Caption")
+                lines.append(f"[{instagram['caption']}]")
+            if "hashtags" in instagram:
+                lines.append("## Hashtags")
+                lines.append(f"[{instagram['hashtags']}]")
+            lines.append("")
+        
+        # Reddit
+        if "reddit" in content_data:
+            lines.append("# Reddit")
+            reddit = content_data["reddit"]
+            if "title" in reddit:
+                lines.append("## Title")
+                lines.append(f"[{reddit['title']}]")
+            if "body" in reddit:
+                lines.append("## Body")
+                lines.append(f"[{reddit['body']}]")
+            lines.append("")
+        
+        # ArtStation
+        if "artstation" in content_data:
+            lines.append("# Artstation")
+            artstation = content_data["artstation"]
+            if "title" in artstation:
+                lines.append("## Title")
+                lines.append(f"[{artstation['title']}]")
+            if "description" in artstation:
+                lines.append("## Description")
+                lines.append(f"[{artstation['description']}]")
+            if "tags" in artstation:
+                lines.append("## Tags")
+                lines.append(f"[{artstation['tags']}]")
+            lines.append("")
+        
+        # DeviantArt
+        if "deviantart" in content_data:
+            lines.append("# Deviantart")
+            deviantart = content_data["deviantart"]
+            if "title" in deviantart:
+                lines.append("## Title")
+                lines.append(f"[{deviantart['title']}]")
+            if "description" in deviantart:
+                lines.append("## Description")
+                lines.append(f"[{deviantart['description']}]")
+            if "tags" in deviantart:
+                lines.append("## Tags")
+                lines.append(f"[{deviantart['tags']}]")
+            lines.append("")
+        
+        return "\n".join(lines)
+    
+    def open_configuration(self):
+        """Open configuration dialog (placeholder for now)."""
+        self.show_toast("Configuration dialog coming soon!", "info")
     
     def toggle_theme(self):
         """Toggle between light, dark, and retro theme."""
@@ -3521,6 +3912,8 @@ class MainWindow(QMainWindow):
     
     def on_image_selected(self, image_id):
         """Handle image selection - clear forms when new image is selected."""
+        self.current_image_id = image_id
+        self.update_status(f"Selected image: {image_id}")
         # Clear analysis and content forms when a new image is selected
         self.analysis_tab.clear_form()
         self.content_tab.clear_form()
