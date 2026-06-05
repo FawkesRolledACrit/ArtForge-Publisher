@@ -10,10 +10,10 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
     QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton,
-    QComboBox, QCheckBox, QStatusBar, QMenuBar, QAction
+    QComboBox, QCheckBox, QStatusBar, QMenuBar
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect, QUrl, QBuffer, QIODevice
-from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient
+from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient, QAction
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 
