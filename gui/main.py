@@ -3488,18 +3488,19 @@ class ConfigurationDialog(QDialog):
                                 total = data['total']
                                 completed = data['completed']
                                 progress = int((completed / total) * 100)
-                                QTimer.singleShot(0, lambda: self.download_progress.setRange(0, 100))
-                                QTimer.singleShot(0, lambda: self.download_progress.setValue(progress))
+                                QTimer.singleShot(0, lambda p=progress: self.download_progress.setValue(p))
                             elif 'status' in data:
-                                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Downloading: {data['status']}"))
+                                status = data['status']
+                                QTimer.singleShot(0, lambda s=status: self.model_info_label.setText(f"Downloading: {s}"))
                         except json.JSONDecodeError:
                             pass
                 
-                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Successfully downloaded {selected_model}"))
+                QTimer.singleShot(0, lambda m=selected_model: self.model_info_label.setText(f"Successfully downloaded {m}"))
                 QTimer.singleShot(0, lambda: self.download_progress.setVisible(False))
                 QTimer.singleShot(0, lambda: self.load_models())  # Reload models
             except Exception as e:
-                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Download failed: {str(e)}"))
+                error_msg = str(e)
+                QTimer.singleShot(0, lambda e=error_msg: self.model_info_label.setText(f"Download failed: {e}"))
                 QTimer.singleShot(0, lambda: self.download_progress.setVisible(False))
                 QTimer.singleShot(0, lambda: self.download_btn.setEnabled(True))
         
