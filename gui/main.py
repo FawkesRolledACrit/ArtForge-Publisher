@@ -3268,6 +3268,7 @@ class ConfigurationDialog(QDialog):
         content_layout.addWidget(text_size_group)
         
         content_layout.addStretch()
+        content_widget.setLayout(content_layout)
         scroll.setWidget(content_widget)
         layout.addWidget(scroll)
         
