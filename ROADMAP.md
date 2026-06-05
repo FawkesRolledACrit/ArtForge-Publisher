@@ -51,6 +51,11 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Logs page which hooks in with the Ollama console output
 - [x] Hide the Ollama console and backend console as hidden taskbar items so they do not flood the users screen unless they want to see them
 - [x] Make a proper exit program protocol which closes all processes and windows gracefully (Ollama, Backend, Main App)
+- [x] Real-time Ollama and backend log display in progress overlay (Analysis and Content windows)
+- [x] Cycling status phrases during AI processing
+- [x] Ollama memory optimization with environment variables
+- [x] Retro theme hover color customization (darker green)
+- [x] GUI stylesheet parsing error fixes
 - [ ] Status bar with connection status and last action
 - [ ] Toolbar with quick action buttons
 - [ ] Menu bar with File, Edit, View, Help menus
