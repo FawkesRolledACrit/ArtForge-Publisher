@@ -76,8 +76,8 @@ class ThemeManager:
     """Manages application themes and color schemes."""
     
     # Font families (platform-specific)
-    FONT_FAMILY = "RetroByte, 'Chakra Petch', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    FONT_FAMILY_MONOSPACE = "RetroByte, Consolas, Monaco, Courier New, monospace"
+    FONT_FAMILY = "Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+    FONT_FAMILY_MONOSPACE = "Consolas, Monaco, Courier New, monospace"
     
     # Retro Y2K Theme (based on user's website)
     RETRO_THEME = {
@@ -87,7 +87,7 @@ class ThemeManager:
         "text_primary": "#00FF00",
         "text_secondary": "#00FF00",  # Made brighter for readability
         "primary": "#00FFFF",
-        "primary_hover": "#00DDDD",
+        "primary_hover": "#008800",  # Darker green for hover states
         "success": "#006600",  # Very dark matrix green
         "success_hover": "#004400",  # Even darker for hover
         "warning": "#666600",  # Very muted yellow
@@ -243,7 +243,6 @@ class ThemeManager:
                 color: {colors['text_primary']};
                 font-size: 13px;
                 font-family: {self.FONT_FAMILY};
-                transition: all 0.2s ease-in-out;
             }}
             QLineEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -251,7 +250,7 @@ class ThemeManager:
             }}
             QLineEdit[readOnly="true"] {{
                 background-color: {colors['surface']};
-                color: {colors['text_primary']};  # Use primary text for better readability
+                color: {colors['text_primary']};
                 border: 1px solid {colors['border']};
             }}
             QTextEdit {{
@@ -262,7 +261,6 @@ class ThemeManager:
                 color: {colors['text_primary']};
                 font-size: 13px;
                 font-family: {self.FONT_FAMILY};
-                transition: all 0.2s ease-in-out;
             }}
             QTextEdit:focus {{
                 border: 2px solid {colors['input_focus']};
@@ -270,7 +268,7 @@ class ThemeManager:
             }}
             QTextEdit[readOnly="true"] {{
                 background-color: {colors['surface']};
-                color: {colors['text_primary']};  # Use primary text for better readability
+                color: {colors['text_primary']};
                 border: 1px solid {colors['border']};
             }}
             QGroupBox {{
@@ -305,13 +303,11 @@ class ThemeManager:
                 border-radius: 6px;
                 border: none;
                 background-color: {colors['card_bg']};
-                margin-bottom: 4px;
                 color: {colors['text_primary']};
                 font-family: {self.FONT_FAMILY};
-                transition: background-color 0.2s ease-in-out;
             }}
             QListWidget::item:hover {{
-                background-color: {colors['primary']};
+                background-color: {colors['primary_hover']};
                 color: white;
             }}
             QListWidget::item:selected {{
@@ -329,17 +325,15 @@ class ThemeManager:
                 padding: 10px 20px;
                 border: 1px solid {colors['card_border']};
                 border-bottom: none;
-                border-top-left-radius: 8px;
-                border-top-right-radius: 8px;
+                border-radius: 8px 8px 0 0;
                 margin-right: 4px;
                 font-size: 13px;
-                font-weight: 500;
+                font-weight: bold;
                 color: {colors['text_primary']};
                 font-family: {self.FONT_FAMILY};
-                transition: all 0.2s ease-in-out;
             }}
             QTabBar::tab:hover {{
-                background-color: {colors['primary']};
+                background-color: {colors['primary_hover']};
                 color: white;
             }}
             QTabBar::tab:selected {{
@@ -361,10 +355,6 @@ class ThemeManager:
             }}
             QPushButton {{
                 font-family: {self.FONT_FAMILY};
-                transition: all 0.2s ease-in-out;
-            }}
-            QPushButton:hover {{
-                transition: all 0.2s ease-in-out;
             }}
         """
     
@@ -852,12 +842,42 @@ class ProgressOverlay(QWidget):
         self.ollama_host = "http://localhost:11434"
         self.log_timer = None
         self.streaming_worker = None
+        self.backend_log_reader = None
+        self.backend_log_path = Path(__file__).parent.parent / "backend.log"
+        self.ollama_log_path = Path(__file__).parent.parent / "ollama.log"
+        self.last_backend_log_position = 0
+        self.last_ollama_log_position = 0
+        self.status_timer = None
+        self.status_phrases = [
+            "Yapping with AI",
+            "Talking to AI",
+            "Conversing with AI",
+            "Chatting with AI",
+            "Discussing with AI",
+            "Banter with AI",
+            "Gossiping with AI",
+            "Conferring with AI",
+            "Consulting AI",
+            "Interacting with AI",
+            "Engaging with AI",
+            "Communicating with AI",
+            "Exchanging with AI",
+            "Dialoguing with AI",
+            "Schmoozing with AI",
+            "Jawing with AI",
+            "Nattering with AI",
+            "Prattling with AI",
+            "Rambling with AI",
+            "Waffling with AI"
+        ]
+        self.current_phrase_index = 0
         self.init_ui()
     
     def init_ui(self):
         """Initialize the UI."""
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
         
         layout = QVBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -918,9 +938,10 @@ class ProgressOverlay(QWidget):
         if parent_widget:
             self.setParent(parent_widget)
             self.setGeometry(parent_widget.rect())
+        self.spinner.start()
         self.show()
         self.raise_()
-        self.spinner.start()
+        self.activateWindow()
     
     def hide(self):
         """Hide the overlay and stop spinner and streaming."""
@@ -928,7 +949,27 @@ class ProgressOverlay(QWidget):
         if self.streaming_worker:
             self.streaming_worker.stop()
             self.streaming_worker = None
+        if self.log_timer:
+            self.log_timer.stop()
+            self.log_timer = None
+        if self.status_timer:
+            self.status_timer.stop()
+            self.status_timer = None
         super().hide()
+    
+    def closeEvent(self, event):
+        """Handle window close event properly."""
+        self.spinner.stop()
+        if self.streaming_worker:
+            self.streaming_worker.stop()
+            self.streaming_worker = None
+        if self.log_timer:
+            self.log_timer.stop()
+            self.log_timer = None
+        if self.status_timer:
+            self.status_timer.stop()
+            self.status_timer = None
+        super().closeEvent(event)
     
     def set_message(self, message):
         """Update the progress message."""
@@ -944,12 +985,88 @@ class ProgressOverlay(QWidget):
         self.log_display.clear()
         self.status_label.setText("Connecting to AI...")
         
+        # Start backend log reader
+        self.start_backend_log_reader()
+        
         if hasattr(self, 'streaming_url') and self.streaming_url:
             self.streaming_worker = StreamingWorker(self.streaming_url)
             self.streaming_worker.received_chunk.connect(self.append_streaming_chunk)
             self.streaming_worker.finished.connect(self.on_streaming_finished)
             self.streaming_worker.error.connect(self.on_streaming_error)
             self.streaming_worker.start()
+    
+    def start_backend_log_reader(self):
+        """Start reading backend and Ollama logs in real-time."""
+        self.last_backend_log_position = 0
+        self.last_ollama_log_position = 0
+        
+        # Initialize backend log position
+        if self.backend_log_path.exists():
+            try:
+                with open(self.backend_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(0, 2)  # Seek to end
+                    self.last_backend_log_position = f.tell()
+            except:
+                self.last_backend_log_position = 0
+        
+        # Initialize Ollama log position
+        if self.ollama_log_path.exists():
+            try:
+                with open(self.ollama_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(0, 2)  # Seek to end
+                    self.last_ollama_log_position = f.tell()
+            except:
+                self.last_ollama_log_position = 0
+        
+        # Start timer to check for new log entries
+        self.log_timer = QTimer()
+        self.log_timer.timeout.connect(self.read_backend_logs)
+        self.log_timer.start(500)  # Check every 500ms
+    
+    def read_backend_logs(self):
+        """Read new entries from backend and Ollama log files."""
+        has_new_logs = False
+        
+        # Read backend logs
+        if self.backend_log_path.exists():
+            try:
+                with open(self.backend_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(self.last_backend_log_position)
+                    new_logs = f.read()
+                    if new_logs:
+                        self.last_backend_log_position = f.tell()
+                        has_new_logs = True
+                        # Append new logs with [Backend] prefix
+                        for line in new_logs.split('\n'):
+                            if line.strip():
+                                self.log_display.insertPlainText(f"[Backend] {line}\n")
+            except Exception as e:
+                pass  # Silently ignore read errors
+        
+        # Read Ollama logs
+        if self.ollama_log_path.exists():
+            try:
+                with open(self.ollama_log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    f.seek(self.last_ollama_log_position)
+                    new_logs = f.read()
+                    if new_logs:
+                        self.last_ollama_log_position = f.tell()
+                        has_new_logs = True
+                        # Append new logs with [Ollama] prefix
+                        for line in new_logs.split('\n'):
+                            if line.strip():
+                                self.log_display.insertPlainText(f"[Ollama] {line}\n")
+            except Exception as e:
+                pass  # Silently ignore read errors
+        
+        # Start status cycling when we see any log activity
+        if has_new_logs and not self.status_timer:
+            self.start_status_cycling()
+        
+        # Auto-scroll to bottom
+        cursor = self.log_display.textCursor()
+        cursor.movePosition(cursor.MoveOperation.End)
+        self.log_display.setTextCursor(cursor)
     
     def append_streaming_chunk(self, chunk):
         """Append a streaming chunk to the display."""
@@ -958,15 +1075,46 @@ class ProgressOverlay(QWidget):
         cursor = self.log_display.textCursor()
         cursor.movePosition(cursor.MoveOperation.End)
         self.log_display.setTextCursor(cursor)
-        self.status_label.setText("Receiving AI response...")
+        
+        # Start status cycling on first chunk
+        if not self.status_timer:
+            self.start_status_cycling()
+    
+    def start_status_cycling(self):
+        """Start cycling through status phrases."""
+        import random
+        # Shuffle phrases for randomness
+        random.shuffle(self.status_phrases)
+        self.current_phrase_index = 0
+        
+        # Set initial phrase
+        self.status_label.setText(self.status_phrases[0])
+        
+        # Start timer to cycle phrases every 2 seconds
+        self.status_timer = QTimer()
+        self.status_timer.timeout.connect(self.cycle_status_phrase)
+        self.status_timer.start(2000)
+    
+    def cycle_status_phrase(self):
+        """Cycle to the next status phrase."""
+        self.current_phrase_index = (self.current_phrase_index + 1) % len(self.status_phrases)
+        self.status_label.setText(self.status_phrases[self.current_phrase_index])
+    
+    def stop_status_cycling(self):
+        """Stop cycling status phrases."""
+        if self.status_timer:
+            self.status_timer.stop()
+            self.status_timer = None
     
     def on_streaming_finished(self):
         """Handle streaming completion."""
+        self.stop_status_cycling()
         self.status_label.setText("✓ Analysis complete!")
         self.log_display.append("\n[COMPLETE] Finished successfully")
     
     def on_streaming_error(self, error):
         """Handle streaming error."""
+        self.stop_status_cycling()
         self.status_label.setText("✗ Error occurred")
         self.log_display.append(f"\n[ERROR] {error}")
 
@@ -2968,7 +3116,7 @@ class LogsTab(QWidget):
         """Display logs in the text widget."""
         colors = theme_manager.get_theme_colors()
         
-        html = ""
+        html = f'<body style="background-color: {colors["surface"]}; color: {colors["text_primary"]}; margin: 0; padding: 10px;">'
         for source, log in logs:
             # Color code by source
             if source == "Ollama":
@@ -2992,6 +3140,7 @@ class LogsTab(QWidget):
             
             html += f'<span style="color: {color}; font-weight: bold;">[{source}]</span> '
             html += f'<span style="color: {text_color};">{log_escaped}</span><br>'
+        html += '</body>'
         
         cursor = self.log_display.textCursor()
         
@@ -3081,7 +3230,7 @@ class MainWindow(QMainWindow):
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {colors['primary']};
+                background-color: {colors['primary_hover']};
                 color: white;
             }}
         """)
@@ -3150,7 +3299,7 @@ class MainWindow(QMainWindow):
                 font-size: 18px;
             }}
             QPushButton:hover {{
-                background-color: {colors['primary']};
+                background-color: {colors['primary_hover']};
                 color: white;
             }}
         """)

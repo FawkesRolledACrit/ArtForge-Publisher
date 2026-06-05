@@ -65,15 +65,25 @@ def start_ollama():
         # Create log file for Ollama
         log_file = Path(__file__).parent / "ollama.log"
         
+        # Set environment variables to reduce Ollama memory usage
+        env = os.environ.copy()
+        env['OLLAMA_NUM_PARALLEL'] = '1'
+        env['OLLAMA_MAX_LOADED_MODELS'] = '1'
+        env['OLLAMA_CONTEXT_LENGTH'] = '8192'  # Increased for vision model image encoding
+        env['OLLAMA_LOAD_TIMEOUT'] = '5m'
+        env['OLLAMA_KV_CACHE_TYPE'] = 'f16'  # Use half-precision to reduce memory
+        
         # Start Ollama with hidden window and redirect output to log file
         # This log file will be read by the GUI's Logs tab
-        with open(log_file, 'w') as f:
-            process = subprocess.Popen(
-                [OLLAMA_PATH, "serve"],
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
+        # Open file in binary mode and keep it open for the subprocess
+        log_handle = open(log_file, 'wb')
+        process = subprocess.Popen(
+            [OLLAMA_PATH, "serve"],
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            env=env
+        )
         
         print(f"Ollama started with PID: {process.pid}")
         print(f"Ollama output will be logged to: {log_file}")
@@ -87,14 +97,14 @@ def start_ollama():
                 response = requests.get(f"{OLLAMA_HOST}/api/tags", timeout=2)
                 if response.status_code == 200:
                     print("Ollama started successfully and is responding!")
-                    return process
+                    return process, log_handle
             except:
                 pass
         print("Ollama process started but API is not responding")
-        return None
+        return None, None
     except Exception as e:
         print(f"Failed to start Ollama: {e}")
-        return None
+        return None, None
 
 
 def pull_model():
@@ -189,20 +199,21 @@ def start_backend():
         if not is_ollama_running():
             print("ERROR: Ollama is not running. Backend requires Ollama to function.")
             print("Please ensure Ollama is started before running the launcher.")
-            return None
+            return None, None
         
         # Create log file for backend
         log_file = Path(__file__).parent / "backend.log"
         
         # Start backend with hidden window and redirect output to log file
-        with open(log_file, 'w') as f:
-            process = subprocess.Popen(
-                [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
-                cwd=BACKEND_DIR,
-                stdout=f,
-                stderr=subprocess.STDOUT,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
+        # Open file in binary mode and keep it open for the subprocess
+        log_handle = open(log_file, 'wb')
+        process = subprocess.Popen(
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"],
+            cwd=BACKEND_DIR,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            creationflags=subprocess.CREATE_NO_WINDOW
+        )
         
         print(f"Backend process started with PID: {process.pid}")
         print(f"Logs: {log_file}")
@@ -215,7 +226,7 @@ def start_backend():
             if process.poll() is not None:
                 print(f"ERROR: Backend process exited with code {process.returncode}")
                 print("Backend failed to start. Check the error above.")
-                return None
+                return None, None
             
             try:
                 print(f"Attempt {i+1}/30: Checking {BACKEND_HOST}/api/v1/images")
@@ -223,7 +234,7 @@ def start_backend():
                 print(f"Response status: {response.status_code}")
                 if response.status_code == 200:
                     print("Backend started successfully!")
-                    return process
+                    return process, log_handle
             except requests.exceptions.ConnectionError as e:
                 print(f"Connection error: {e}")
             except requests.exceptions.Timeout as e:
@@ -231,10 +242,10 @@ def start_backend():
             except Exception as e:
                 print(f"Unexpected error: {e}")
         print("Backend failed to start within timeout")
-        return None
+        return None, None
     except Exception as e:
         print(f"Failed to start backend: {e}")
-        return None
+        return None, None
 
 
 def launch_gui():
@@ -245,21 +256,22 @@ def launch_gui():
         if gui_path.exists():
             # Launch GUI and capture output to file
             log_file = Path(__file__).parent / "gui.log"
-            with open(log_file, 'w') as f:
-                process = subprocess.Popen(
-                    [sys.executable, str(gui_path)],
-                    stdout=f,
-                    stderr=subprocess.STDOUT
-                )
+            # Open file in binary mode and keep it open for the subprocess
+            log_handle = open(log_file, 'wb')
+            process = subprocess.Popen(
+                [sys.executable, str(gui_path)],
+                stdout=log_handle,
+                stderr=subprocess.STDOUT
+            )
             print(f"GUI launched with PID: {process.pid}")
             print(f"Logs: {log_file}")
-            return process
+            return process, log_handle
         else:
             print("GUI not found. Please create the GUI first.")
-            return None
+            return None, None
     except Exception as e:
         print(f"Failed to launch GUI: {e}")
-        return None
+        return None, None
 
 
 def main():
@@ -270,42 +282,64 @@ def main():
     
     # Store process references for cleanup
     ollama_process = None
+    ollama_log_handle = None
     backend_process = None
+    backend_log_handle = None
     gui_process = None
+    gui_log_handle = None
     
     try:
-        # Step 1: Start Ollama
-        if not is_ollama_running():
-            ollama_process = start_ollama()
-            if ollama_process is None:
-                print("Failed to start Ollama. Exiting.")
-                sys.exit(1)
-        else:
-            print("Ollama is already running")
+        # Step 1: Start Ollama (always start with logging, even if running externally)
+        if is_ollama_running():
+            print("Ollama is already running. Killing external instance to enable logging...")
+            try:
+                result = subprocess.run(
+                    ["taskkill", "/F", "/IM", "ollama.exe"],
+                    capture_output=True,
+                    text=True
+                )
+                if "SUCCESS" in result.stdout or result.returncode == 0:
+                    print("Killed external Ollama process")
+                    time.sleep(2)  # Wait for process to fully terminate
+            except:
+                pass
+        
+        ollama_process, ollama_log_handle = start_ollama()
+        if ollama_process is None:
+            print("Failed to start Ollama. Exiting.")
+            sys.exit(1)
         
         # Step 2: Pull model
         if not pull_model():
             print("Failed to pull model. Exiting.")
             if ollama_process:
                 ollama_process.terminate()
+            if ollama_log_handle:
+                ollama_log_handle.close()
             sys.exit(1)
         
         # Step 3: Start backend
-        backend_process = start_backend()
+        backend_process, backend_log_handle = start_backend()
         if backend_process is None:
             print("Failed to start backend. Exiting.")
             if ollama_process:
                 ollama_process.terminate()
+            if ollama_log_handle:
+                ollama_log_handle.close()
             sys.exit(1)
         
         # Step 4: Launch GUI
-        gui_process = launch_gui()
+        gui_process, gui_log_handle = launch_gui()
         if gui_process is None:
             print("Failed to launch GUI. Exiting.")
             if backend_process:
                 backend_process.terminate()
+            if backend_log_handle:
+                backend_log_handle.close()
             if ollama_process:
                 ollama_process.terminate()
+            if ollama_log_handle:
+                ollama_log_handle.close()
             sys.exit(1)
         
         print("\nAll services started successfully!")
@@ -345,6 +379,12 @@ def main():
                 gui_process.wait(timeout=5)
             except:
                 gui_process.kill()
+        # Close GUI log handle
+        if gui_log_handle:
+            try:
+                gui_log_handle.close()
+            except:
+                pass
         
         # Stop backend
         if backend_process and backend_process.poll() is None:
@@ -354,6 +394,12 @@ def main():
                 backend_process.wait(timeout=5)
             except:
                 backend_process.kill()
+        # Close backend log handle
+        if backend_log_handle:
+            try:
+                backend_log_handle.close()
+            except:
+                pass
         
         # Stop Ollama (only if we started it)
         if ollama_process and ollama_process.poll() is None:
@@ -363,6 +409,12 @@ def main():
                 ollama_process.wait(timeout=5)
             except:
                 ollama_process.kill()
+        # Close Ollama log handle
+        if ollama_log_handle:
+            try:
+                ollama_log_handle.close()
+            except:
+                pass
         
         print("All services stopped. Goodbye!")
 
