@@ -56,11 +56,11 @@ ArtForge Publisher is a desktop application for analyzing artwork and generating
 - [x] Ollama memory optimization with environment variables
 - [x] Retro theme hover color customization (darker green)
 - [x] GUI stylesheet parsing error fixes
-- [ ] Status bar with connection status and last action
+- [x] Status bar with connection status and last action
 - [ ] Toolbar with quick action buttons
-- [ ] Menu bar with File, Edit, View, Help menus
+- [x] Menu bar with File menu (Image Directory, Import Image, Content Directory, Import Content, Export Content, Configuration)
 - [ ] Settings dialog for customization
-- [ ] Export functionality (text/JSON)
+- [x] Export functionality (text/Markdown)
 - [ ] Auto-save functionality with visual indicator
 - [ ] Responsive layout for window resizing
 - [ ] Proper focus management and tab order
