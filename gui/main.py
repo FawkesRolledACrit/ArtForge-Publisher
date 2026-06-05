@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QListWidget, QMessageBox,
     QTextEdit, QFormLayout, QLineEdit, QFileDialog, QSplitter,
     QProgressBar, QGroupBox, QFrame, QScrollArea, QToolButton,
-    QComboBox, QCheckBox, QStatusBar, QMenuBar
+    QComboBox, QCheckBox, QStatusBar, QMenuBar, QDialog, QSpinBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QMimeData, QTimer, QPropertyAnimation, QEasingCurve, QRect, QUrl, QBuffer, QIODevice
 from PyQt6.QtGui import QPixmap, QImage, QFont, QPalette, QColor, QGuiApplication, QFontDatabase, QPainter, QPen, QBrush, QLinearGradient, QAction
@@ -3178,6 +3178,334 @@ class LogsTab(QWidget):
         event.accept()
 
 
+class ConfigurationDialog(QDialog):
+    """Configuration dialog for application settings."""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configuration")
+        self.setGeometry(200, 200, 600, 500)
+        self.config = self.load_config()
+        self.init_ui()
+        self.load_models()
+    
+    def init_ui(self):
+        """Initialize the UI."""
+        layout = QVBoxLayout()
+        
+        # Create scroll area for settings
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        content_widget = QWidget()
+        content_layout = QVBoxLayout()
+        
+        colors = theme_manager.get_theme_colors()
+        
+        # Image Directory
+        image_dir_group = QGroupBox("Image Storage Directory")
+        image_dir_layout = QHBoxLayout()
+        self.image_dir_label = QLineEdit(self.config.get('image_dir', str(Path(__file__).parent.parent / "backend" / "storage" / "images")))
+        self.image_dir_label.setReadOnly(True)
+        image_dir_browse = QPushButton("Browse...")
+        image_dir_browse.clicked.connect(self.browse_image_dir)
+        image_dir_layout.addWidget(self.image_dir_label)
+        image_dir_layout.addWidget(image_dir_browse)
+        image_dir_group.setLayout(image_dir_layout)
+        content_layout.addWidget(image_dir_group)
+        
+        # Content Directory
+        content_dir_group = QGroupBox("Content Storage Directory")
+        content_dir_layout = QHBoxLayout()
+        self.content_dir_label = QLineEdit(self.config.get('content_dir', str(Path(__file__).parent.parent / "backend" / "storage" / "content")))
+        self.content_dir_label.setReadOnly(True)
+        content_dir_browse = QPushButton("Browse...")
+        content_dir_browse.clicked.connect(self.browse_content_dir)
+        content_dir_layout.addWidget(self.content_dir_label)
+        content_dir_layout.addWidget(content_dir_browse)
+        content_dir_group.setLayout(content_dir_layout)
+        content_layout.addWidget(content_dir_group)
+        
+        # Vision Model Selection
+        model_group = QGroupBox("Vision Model")
+        model_layout = QVBoxLayout()
+        
+        model_select_layout = QHBoxLayout()
+        self.model_combo = QComboBox()
+        self.model_combo.setMinimumWidth(300)
+        model_select_layout.addWidget(QLabel("Select Model:"))
+        model_select_layout.addWidget(self.model_combo)
+        
+        self.download_btn = QPushButton("⬇️ Download")
+        self.download_btn.setEnabled(False)
+        self.download_btn.clicked.connect(self.download_model)
+        model_select_layout.addWidget(self.download_btn)
+        
+        model_layout.addLayout(model_select_layout)
+        
+        # Model info
+        self.model_info_label = QLabel("Loading models...")
+        self.model_info_label.setWordWrap(True)
+        model_layout.addWidget(self.model_info_label)
+        
+        # Download progress
+        self.download_progress = QProgressBar()
+        self.download_progress.setVisible(False)
+        model_layout.addWidget(self.download_progress)
+        
+        model_group.setLayout(model_layout)
+        content_layout.addWidget(model_group)
+        
+        # Text Size
+        text_size_group = QGroupBox("Text Size")
+        text_size_layout = QHBoxLayout()
+        text_size_layout.addWidget(QLabel("Font Size:"))
+        self.text_size_spin = QSpinBox()
+        self.text_size_spin.setRange(8, 24)
+        self.text_size_spin.setValue(self.config.get('text_size', 12))
+        text_size_layout.addWidget(self.text_size_spin)
+        text_size_layout.addStretch()
+        text_size_group.setLayout(text_size_layout)
+        content_layout.addWidget(text_size_group)
+        
+        content_layout.addStretch()
+        scroll.setWidget(content_widget)
+        layout.addWidget(scroll)
+        
+        # Buttons
+        button_layout = QHBoxLayout()
+        save_btn = QPushButton("Save")
+        save_btn.clicked.connect(self.save_config)
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.reject)
+        button_layout.addStretch()
+        button_layout.addWidget(save_btn)
+        button_layout.addWidget(cancel_btn)
+        layout.addLayout(button_layout)
+        
+        self.setLayout(layout)
+        
+        # Apply theme
+        self.apply_theme()
+    
+    def apply_theme(self):
+        """Apply current theme to dialog."""
+        colors = theme_manager.get_theme_colors()
+        self.setStyleSheet(f"""
+            QDialog {{
+                background-color: {colors['background']};
+                color: {colors['text_primary']};
+            }}
+            QGroupBox {{
+                color: {colors['text_primary']};
+                border: 1px solid {colors['border']};
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 10px;
+                font-weight: bold;
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }}
+            QLabel {{
+                color: {colors['text_primary']};
+            }}
+            QLineEdit {{
+                background-color: {colors['input_bg']};
+                color: {colors['text_primary']};
+                border: 1px solid {colors['input_border']};
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QPushButton {{
+                background-color: {colors['primary']};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['primary_hover']};
+            }}
+            QPushButton:disabled {{
+                background-color: {colors['surface']};
+                color: {colors['text_secondary']};
+            }}
+            QComboBox {{
+                background-color: {colors['input_bg']};
+                color: {colors['text_primary']};
+                border: 1px solid {colors['input_border']};
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QSpinBox {{
+                background-color: {colors['input_bg']};
+                color: {colors['text_primary']};
+                border: 1px solid {colors['input_border']};
+                border-radius: 4px;
+                padding: 5px;
+            }}
+            QProgressBar {{
+                border: 1px solid {colors['border']};
+                border-radius: 4px;
+                text-align: center;
+            }}
+            QProgressBar::chunk {{
+                background-color: {colors['primary']};
+            }}
+        """)
+    
+    def load_config(self):
+        """Load configuration from file."""
+        config_file = Path(__file__).parent.parent / "config.json"
+        if config_file.exists():
+            try:
+                with open(config_file, 'r') as f:
+                    return json.load(f)
+            except:
+                pass
+        return {}
+    
+    def save_config_to_file(self, config):
+        """Save configuration to file."""
+        config_file = Path(__file__).parent.parent / "config.json"
+        try:
+            with open(config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception as e:
+            print(f"Error saving config: {e}")
+    
+    def browse_image_dir(self):
+        """Browse for image directory."""
+        dir_dialog = QFileDialog()
+        dir_dialog.setFileMode(QFileDialog.FileMode.Directory)
+        if dir_dialog.exec():
+            self.image_dir_label.setText(dir_dialog.selectedFiles()[0])
+    
+    def browse_content_dir(self):
+        """Browse for content directory."""
+        dir_dialog = QFileDialog()
+        dir_dialog.setFileMode(QFileDialog.FileMode.Directory)
+        if dir_dialog.exec():
+            self.content_dir_label.setText(dir_dialog.selectedFiles()[0])
+    
+    def load_models(self):
+        """Load available vision models from Ollama."""
+        try:
+            response = requests.get("http://localhost:11434/api/tags", timeout=5)
+            if response.status_code == 200:
+                models = response.json().get('models', [])
+                vision_models = [m for m in models if 'vision' in m.get('name', '').lower() or 'vl' in m.get('name', '').lower()]
+                
+                # Common vision models to suggest if not installed
+                suggested_models = [
+                    "qwen2.5-vl:7b",
+                    "qwen2.5-vl:latest",
+                    "llava:7b",
+                    "llava:latest",
+                    "minicpm-v:2.5",
+                    "bakllava:latest"
+                ]
+                
+                # Add installed models
+                installed_names = [m['name'] for m in vision_models]
+                self.installed_models = vision_models
+                
+                # Combine installed and suggested
+                all_models = list(set(installed_names + suggested_models))
+                all_models.sort()
+                
+                self.model_combo.clear()
+                for model in all_models:
+                    is_installed = model in installed_names
+                    display_name = f"{model} {'(Installed)' if is_installed else '(Not Installed)'}"
+                    self.model_combo.addItem(display_name, model)
+                
+                # Select current model
+                current_model = self.config.get('vision_model', 'qwen2.5-vl:7b')
+                index = self.model_combo.findData(current_model)
+                if index >= 0:
+                    self.model_combo.setCurrentIndex(index)
+                
+                self.model_info_label.setText(f"Found {len(vision_models)} installed vision models")
+                self.update_download_button()
+            else:
+                self.model_info_label.setText("Failed to connect to Ollama")
+        except Exception as e:
+            self.model_info_label.setText(f"Error loading models: {str(e)}")
+        
+        # Connect combo change to update download button
+        self.model_combo.currentIndexChanged.connect(self.update_download_button)
+    
+    def update_download_button(self):
+        """Update download button state based on selected model."""
+        selected_model = self.model_combo.currentData()
+        is_installed = any(m['name'] == selected_model for m in getattr(self, 'installed_models', []))
+        self.download_btn.setEnabled(not is_installed and selected_model)
+        if is_installed:
+            self.download_btn.setText("✓ Installed")
+        else:
+            self.download_btn.setText("⬇️ Download")
+    
+    def download_model(self):
+        """Download selected model from Ollama."""
+        selected_model = self.model_combo.currentData()
+        if not selected_model:
+            return
+        
+        self.download_btn.setEnabled(False)
+        self.download_btn.setText("Downloading...")
+        self.download_progress.setVisible(True)
+        self.download_progress.setRange(0, 0)  # Indeterminate
+        
+        def download():
+            try:
+                response = requests.post(
+                    "http://localhost:11434/api/pull",
+                    json={"name": selected_model, "stream": True},
+                    stream=True,
+                    timeout=600
+                )
+                
+                for line in response.iter_lines():
+                    if line:
+                        data = json.loads(line)
+                        if 'total' in data and 'completed' in data:
+                            total = data['total']
+                            completed = data['completed']
+                            progress = int((completed / total) * 100)
+                            self.download_progress.setRange(0, 100)
+                            self.download_progress.setValue(progress)
+                        elif 'status' in data:
+                            self.model_info_label.setText(f"Downloading: {data['status']}")
+                
+                self.model_info_label.setText(f"Successfully downloaded {selected_model}")
+                self.download_progress.setVisible(False)
+                self.load_models()  # Reload models
+            except Exception as e:
+                self.model_info_label.setText(f"Download failed: {str(e)}")
+                self.download_progress.setVisible(False)
+                self.download_btn.setEnabled(True)
+        
+        # Run download in background thread
+        import threading
+        thread = threading.Thread(target=download)
+        thread.daemon = True
+        thread.start()
+    
+    def save_config(self):
+        """Save configuration and apply settings."""
+        self.config['image_dir'] = self.image_dir_label.text()
+        self.config['content_dir'] = self.content_dir_label.text()
+        self.config['vision_model'] = self.model_combo.currentData()
+        self.config['text_size'] = self.text_size_spin.value()
+        
+        self.save_config_to_file(self.config)
+        self.accept()
+
+
 class MainWindow(QMainWindow):
     """Main application window."""
     
@@ -3671,8 +3999,22 @@ class MainWindow(QMainWindow):
         return "\n".join(lines)
     
     def open_configuration(self):
-        """Open configuration dialog (placeholder for now)."""
-        self.show_toast("Configuration dialog coming soon!", "info")
+        """Open configuration dialog."""
+        dialog = ConfigurationDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Apply configuration
+            self.apply_configuration(dialog.config)
+            self.show_toast("Configuration saved!", "success")
+    
+    def apply_configuration(self, config):
+        """Apply configuration settings to the application."""
+        # Apply text size
+        if 'text_size' in config:
+            font_size = config['text_size']
+            self.setStyleSheet(theme_manager.get_stylesheet().replace('font-size: 13px', f'font-size: {font_size}px'))
+        
+        # Note: Image and content directory changes would require backend updates
+        # This can be implemented later when backend supports custom paths
     
     def toggle_theme(self):
         """Toggle between light, dark, and retro theme."""
