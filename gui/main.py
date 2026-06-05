@@ -3186,9 +3186,18 @@ class MainWindow(QMainWindow):
         self.current_image_id = None
         self.last_action = "Ready"
         self.init_ui()
-        self.setup_status_bar()
-        self.setup_menu_bar()
-        self.check_connections()
+        try:
+            self.setup_status_bar()
+        except Exception as e:
+            print(f"Error setting up status bar: {e}")
+        try:
+            self.setup_menu_bar()
+        except Exception as e:
+            print(f"Error setting up menu bar: {e}")
+        try:
+            self.check_connections()
+        except Exception as e:
+            print(f"Error checking connections: {e}")
     
     def init_ui(self):
         """Initialize the UI."""
@@ -3383,24 +3392,30 @@ class MainWindow(QMainWindow):
                 ollama_connected = False
             
             # Update status
-            if backend_connected and ollama_connected:
-                self.connection_status.setText("🟢 Backend: Connected | Ollama: Connected")
-                self.connection_status.setStyleSheet("color: #00FF00;")
-            elif backend_connected:
-                self.connection_status.setText("🟡 Backend: Connected | Ollama: Disconnected")
-                self.connection_status.setStyleSheet("color: #FFFF00;")
-            elif ollama_connected:
-                self.connection_status.setText("🟡 Backend: Disconnected | Ollama: Connected")
-                self.connection_status.setStyleSheet("color: #FFFF00;")
-            else:
-                self.connection_status.setText("🔴 Backend: Disconnected | Ollama: Disconnected")
-                self.connection_status.setStyleSheet("color: #FF0000;")
+            try:
+                if backend_connected and ollama_connected:
+                    self.connection_status.setText("🟢 Backend: Connected | Ollama: Connected")
+                    self.connection_status.setStyleSheet("color: #00FF00;")
+                elif backend_connected:
+                    self.connection_status.setText("🟡 Backend: Connected | Ollama: Disconnected")
+                    self.connection_status.setStyleSheet("color: #FFFF00;")
+                elif ollama_connected:
+                    self.connection_status.setText("🟡 Backend: Disconnected | Ollama: Connected")
+                    self.connection_status.setStyleSheet("color: #FFFF00;")
+                else:
+                    self.connection_status.setText("🔴 Backend: Disconnected | Ollama: Disconnected")
+                    self.connection_status.setStyleSheet("color: #FF0000;")
+            except:
+                pass  # Ignore status update errors
         
-        check()
-        # Check every 5 seconds
-        self.connection_timer = QTimer()
-        self.connection_timer.timeout.connect(check)
-        self.connection_timer.start(5000)
+        try:
+            check()
+            # Check every 5 seconds
+            self.connection_timer = QTimer()
+            self.connection_timer.timeout.connect(check)
+            self.connection_timer.start(5000)
+        except Exception as e:
+            print(f"Error starting connection timer: {e}")
     
     def update_status(self, action):
         """Update the last action status."""
@@ -3411,12 +3426,15 @@ class MainWindow(QMainWindow):
         """Open the image storage directory."""
         import subprocess
         import os
-        image_dir = Path(__file__).parent.parent / "backend" / "storage" / "images"
-        if image_dir.exists():
-            os.startfile(str(image_dir))
-            self.update_status("Opened image directory")
-        else:
-            self.show_toast("Image directory not found", "error")
+        try:
+            image_dir = Path(__file__).parent.parent / "backend" / "storage" / "images"
+            if image_dir.exists():
+                os.startfile(str(image_dir))
+                self.update_status("Opened image directory")
+            else:
+                self.show_toast("Image directory not found", "error")
+        except Exception as e:
+            self.show_toast(f"Failed to open directory: {str(e)}", "error")
     
     def import_image(self):
         """Import an image and auto-select it for analysis."""
