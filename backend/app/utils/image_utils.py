@@ -50,8 +50,12 @@ def save_uploaded_image(
     # Generate thumbnail
     thumbnail_path = generate_thumbnail(saved_path)
     
-    logger.info(f"Saved image: {saved_path}, thumbnail: {thumbnail_path}")
-    return str(saved_path), str(thumbnail_path), file_size, dimensions
+    # Store absolute paths in database
+    saved_path_abs = saved_path.resolve()
+    thumbnail_path_abs = Path(thumbnail_path).resolve() if thumbnail_path else None
+    
+    logger.info(f"Saved image: {saved_path_abs}, thumbnail: {thumbnail_path_abs}")
+    return str(saved_path_abs), str(thumbnail_path_abs) if thumbnail_path_abs else "", file_size, dimensions
 
 
 def generate_thumbnail(image_path: Path, size: Tuple[int, int] = (300, 300)) -> str:
@@ -80,8 +84,10 @@ def generate_thumbnail(image_path: Path, size: Tuple[int, int] = (300, 300)) -> 
             # Save thumbnail
             img.save(thumbnail_path, "JPEG", quality=85)
             
-            logger.info(f"Generated thumbnail: {thumbnail_path}")
-            return str(thumbnail_path)
+            # Return absolute path
+            thumbnail_path_abs = thumbnail_path.resolve()
+            logger.info(f"Generated thumbnail: {thumbnail_path_abs}")
+            return str(thumbnail_path_abs)
     except Exception as e:
         logger.error(f"Failed to generate thumbnail: {e}")
         return ""
@@ -96,15 +102,25 @@ def delete_image_files(original_path: str, thumbnail_path: str | None) -> None:
     """
     try:
         if original_path:
-            Path(original_path).unlink(missing_ok=True)
-            logger.info(f"Deleted original image: {original_path}")
+            # Resolve path to handle both relative and absolute paths
+            path = Path(original_path)
+            if not path.is_absolute():
+                # If relative, resolve from backend directory
+                path = (Path(__file__).parent.parent / path).resolve()
+            path.unlink(missing_ok=True)
+            logger.info(f"Deleted original image: {path}")
     except Exception as e:
         logger.error(f"Failed to delete original image: {e}")
     
     try:
         if thumbnail_path:
-            Path(thumbnail_path).unlink(missing_ok=True)
-            logger.info(f"Deleted thumbnail: {thumbnail_path}")
+            # Resolve path to handle both relative and absolute paths
+            path = Path(thumbnail_path)
+            if not path.is_absolute():
+                # If relative, resolve from backend directory
+                path = (Path(__file__).parent.parent / path).resolve()
+            path.unlink(missing_ok=True)
+            logger.info(f"Deleted thumbnail: {path}")
     except Exception as e:
         logger.error(f"Failed to delete thumbnail: {e}")
 
