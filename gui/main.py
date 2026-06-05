@@ -3454,7 +3454,7 @@ class ConfigurationDialog(QDialog):
         """Update download button state based on selected model."""
         selected_model = self.model_combo.currentData()
         is_installed = any(m['name'] == selected_model for m in getattr(self, 'installed_models', []))
-        self.download_btn.setEnabled(not is_installed and selected_model)
+        self.download_btn.setEnabled(bool(not is_installed and selected_model))
         if is_installed:
             self.download_btn.setText("✓ Installed")
         else:
