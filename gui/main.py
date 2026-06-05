@@ -3414,9 +3414,19 @@ class ConfigurationDialog(QDialog):
                 installed_names = [m['name'] for m in vision_models]
                 self.installed_models = vision_models
                 
-                # Combine installed and suggested
+                # Combine installed and suggested, removing duplicates
                 all_models = list(set(installed_names + suggested_models))
                 all_models.sort()
+                
+                # Remove duplicates that might have different tags
+                seen = set()
+                unique_models = []
+                for model in all_models:
+                    base_name = model.split(':')[0]
+                    if base_name not in seen:
+                        seen.add(base_name)
+                        unique_models.append(model)
+                all_models = unique_models
                 
                 self.model_combo.clear()
                 for model in all_models:
@@ -3472,23 +3482,26 @@ class ConfigurationDialog(QDialog):
                 
                 for line in response.iter_lines():
                     if line:
-                        data = json.loads(line)
-                        if 'total' in data and 'completed' in data:
-                            total = data['total']
-                            completed = data['completed']
-                            progress = int((completed / total) * 100)
-                            self.download_progress.setRange(0, 100)
-                            self.download_progress.setValue(progress)
-                        elif 'status' in data:
-                            self.model_info_label.setText(f"Downloading: {data['status']}")
+                        try:
+                            data = json.loads(line)
+                            if 'total' in data and 'completed' in data:
+                                total = data['total']
+                                completed = data['completed']
+                                progress = int((completed / total) * 100)
+                                QTimer.singleShot(0, lambda: self.download_progress.setRange(0, 100))
+                                QTimer.singleShot(0, lambda: self.download_progress.setValue(progress))
+                            elif 'status' in data:
+                                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Downloading: {data['status']}"))
+                        except json.JSONDecodeError:
+                            pass
                 
-                self.model_info_label.setText(f"Successfully downloaded {selected_model}")
-                self.download_progress.setVisible(False)
-                self.load_models()  # Reload models
+                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Successfully downloaded {selected_model}"))
+                QTimer.singleShot(0, lambda: self.download_progress.setVisible(False))
+                QTimer.singleShot(0, lambda: self.load_models())  # Reload models
             except Exception as e:
-                self.model_info_label.setText(f"Download failed: {str(e)}")
-                self.download_progress.setVisible(False)
-                self.download_btn.setEnabled(True)
+                QTimer.singleShot(0, lambda: self.model_info_label.setText(f"Download failed: {str(e)}"))
+                QTimer.singleShot(0, lambda: self.download_progress.setVisible(False))
+                QTimer.singleShot(0, lambda: self.download_btn.setEnabled(True))
         
         # Run download in background thread
         import threading
